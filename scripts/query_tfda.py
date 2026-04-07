@@ -1,0 +1,274 @@
+#!/usr/bin/env python3
+"""TFDA 醫療器材資料查詢工具 — CLI 入口。
+
+用法：
+  python query_tfda.py --company "醫兆"
+  python query_tfda.py --manufacturer "ARKRAY"
+  python query_tfda.py --reagent "HbA1c"
+  python query_tfda.py --license "衛部醫器輸字第XXXXXX號"
+  python query_tfda.py --company "醫兆" --manufacturer "ARKRAY"
+  python query_tfda.py --update-cache
+"""
+
+import argparse
+import sys
+import os
+
+# 確保可以 import 同目錄模組
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from tfda_datasets import load_dataset, update_all_cache, get_cache_info
+from tfda_normalize import normalize_dataset, get_field
+from tfda_search import (
+    search_by_license_no, search_by_company, search_by_manufacturer,
+    search_by_product, search_by_reagent, search_by_keyword,
+    search_qsd, search_leaflet, apply_cross_filter,
+)
+from tfda_formatter import (
+    format_license_table, format_grouped_by_manufacturer,
+    format_leaflet_table, format_qsd_table, format_json,
+    format_summary, format_cache_footer,
+)
+
+
+def build_parser() -> argparse.ArgumentParser:
+    """建立 CLI 參數解析器。"""
+    parser = argparse.ArgumentParser(
+        description="TFDA 醫療器材資料查詢工具",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+範例：
+  python query_tfda.py --company "醫兆"
+  python query_tfda.py --company "醫兆" --manufacturer "ARKRAY"
+  python query_tfda.py --reagent "HbA1c"
+  python query_tfda.py --license "衛部醫器輸字第000001號"
+  python query_tfda.py --qsd "醫兆"
+  python query_tfda.py --leaflet "衛部醫器輸字第000001號"
+  python query_tfda.py --keyword "尿液分析"
+  python query_tfda.py --update-cache
+        """,
+    )
+
+    # 查詢參數
+    query = parser.add_argument_group("查詢條件（可組合使用）")
+    query.add_argument("--license", type=str, help="許可證字號")
+    query.add_argument("--product", type=str, help="產品名稱（中英文）")
+    query.add_argument("--company", type=str, help="申請商/藥商名稱")
+    query.add_argument("--manufacturer", type=str, help="製造廠/廠牌名稱")
+    query.add_argument("--reagent", type=str, help="試劑名稱/檢測項目")
+    query.add_argument("--keyword", type=str, help="全文關鍵字搜尋")
+    query.add_argument("--qsd", type=str, help="查詢 QSD/QMS 登錄")
+    query.add_argument("--leaflet", type=str, help="查詢仿單/外盒")
+
+    # 輸出控制
+    output = parser.add_argument_group("輸出控制")
+    output.add_argument("--json", action="store_true", help="輸出 JSON 格式")
+    output.add_argument("--limit", type=int, default=0, help="限制顯示筆數（0=不限制）")
+    output.add_argument("--group-by", type=str, choices=["manufacturer", "company_name"],
+                        help="依指定欄位分組顯示")
+
+    # 快取管理
+    cache = parser.add_argument_group("快取管理")
+    cache.add_argument("--update-cache", action="store_true", help="更新本地快取")
+    cache.add_argument("--cache-info", action="store_true", help="顯示快取狀態")
+
+    return parser
+
+
+def main() -> None:
+    """主程式入口。"""
+    parser = build_parser()
+    args = parser.parse_args()
+
+    # 快取管理
+    if args.update_cache:
+        print("正在更新所有資料集快取...")
+        update_all_cache()
+        print("快取更新完成。")
+        return
+
+    if args.cache_info:
+        info = get_cache_info()
+        print("快取狀態：")
+        for key, val in info.items():
+            status = "✅ 有效" if val["valid"] else ("⚠️ 過期" if val["cached"] else "❌ 無快取")
+            date = val["cache_date"] or "N/A"
+            print(f"  {val['name']}：{status}（{date}）")
+        return
+
+    # 檢查是否有查詢條件
+    has_query = any([
+        args.license, args.product, args.company, args.manufacturer,
+        args.reagent, args.keyword, args.qsd, args.leaflet,
+    ])
+
+    if not has_query:
+        parser.print_help()
+        return
+
+    # === QSD 查詢 ===
+    if args.qsd:
+        print(f"正在查詢 QSD/QMS 資料：{args.qsd} ...")
+        try:
+            qsd_data = load_dataset("qsd")
+            qsd_normalized = normalize_dataset(qsd_data, "qsd")
+            results = search_qsd(qsd_normalized, args.qsd)
+
+            if args.json:
+                print(format_json(results))
+            else:
+                print(format_qsd_table(results))
+                print(format_cache_footer(get_cache_info()))
+        except Exception as e:
+            print(f"錯誤：{e}", file=sys.stderr)
+        return
+
+    # === 仿單查詢 ===
+    if args.leaflet:
+        print(f"正在查詢仿單/外盒：{args.leaflet} ...")
+        try:
+            leaflet_data = load_dataset("leaflet")
+            leaflet_normalized = normalize_dataset(leaflet_data, "leaflet")
+            results = search_leaflet(leaflet_normalized, args.leaflet)
+
+            if args.json:
+                print(format_json(results))
+            else:
+                print(format_leaflet_table(results))
+                print(format_cache_footer(get_cache_info()))
+        except Exception as e:
+            print(f"錯誤：{e}", file=sys.stderr)
+        return
+
+    # === 許可證查詢（主資料集） ===
+    print("正在載入許可證資料集...")
+    try:
+        license_data = load_dataset("license")
+        license_normalized = normalize_dataset(license_data, "license")
+    except Exception as e:
+        print(f"錯誤：無法載入許可證資料集 — {e}", file=sys.stderr)
+        sys.exit(1)
+
+    results = None
+
+    # 決定主要查詢方式
+    if args.license:
+        print(f"查詢許可證字號：{args.license}")
+        results = search_by_license_no(license_normalized, args.license)
+
+        # 同時查仿單
+        if results:
+            try:
+                leaflet_data = load_dataset("leaflet")
+                leaflet_normalized = normalize_dataset(leaflet_data, "leaflet")
+                for row, mt in results:
+                    ln = get_field(row, "license_no")
+                    leaflet_hits = search_leaflet(leaflet_normalized, ln)
+                    if leaflet_hits:
+                        lr = leaflet_hits[0][0]
+                        row["_leaflet_url"] = get_field(lr, "leaflet_url")
+                        row["_package_url"] = get_field(lr, "package_url")
+            except Exception:
+                pass
+
+    elif args.company and not args.manufacturer and not args.reagent and not args.product and not args.keyword:
+        # 純公司查詢
+        print(f"查詢公司：{args.company}")
+        results = search_by_company(license_normalized, args.company)
+
+    elif args.manufacturer and not args.company and not args.reagent:
+        # 純製造廠查詢
+        print(f"查詢製造廠：{args.manufacturer}")
+        results = search_by_manufacturer(license_normalized, args.manufacturer)
+
+    elif args.reagent and not args.company and not args.manufacturer:
+        # 純試劑查詢
+        print(f"查詢試劑/檢測項目：{args.reagent}")
+        results = search_by_reagent(license_normalized, args.reagent)
+
+    elif args.product:
+        print(f"查詢產品名稱：{args.product}")
+        results = search_by_product(license_normalized, args.product)
+
+    elif args.keyword:
+        print(f"全文搜尋：{args.keyword}")
+        results = search_by_keyword(license_normalized, args.keyword)
+
+    else:
+        # 組合查詢：先用其中一個條件取候選集，再交叉篩選
+        if args.company:
+            print(f"組合查詢：公司={args.company}", end="")
+            results = search_by_company(license_normalized, args.company)
+        elif args.manufacturer:
+            print(f"組合查詢：製造廠={args.manufacturer}", end="")
+            results = search_by_manufacturer(license_normalized, args.manufacturer)
+        elif args.reagent:
+            print(f"組合查詢：試劑={args.reagent}", end="")
+            results = search_by_reagent(license_normalized, args.reagent)
+
+        if results is not None:
+            # 套用交叉篩選
+            if args.company and not args.company == getattr(args, '_primary', None):
+                print(f", 公司={args.company}", end="")
+            if args.manufacturer:
+                print(f", 製造廠={args.manufacturer}", end="")
+            if args.reagent:
+                print(f", 試劑={args.reagent}", end="")
+            print()
+
+            results = apply_cross_filter(
+                results,
+                company=args.company if results and not any(args.company == get_field(r, "company_name") for r, _ in results[:1]) else None,
+                manufacturer=args.manufacturer,
+                reagent=args.reagent,
+            )
+
+    if results is None:
+        print("未指定有效的查詢條件。")
+        return
+
+    # === 輸出 ===
+    if args.json:
+        print(format_json(results))
+        return
+
+    # 超過 20 筆先顯示摘要
+    if len(results) > 20 and not args.limit:
+        group_field = args.group_by or "manufacturer"
+        print(format_summary(results, group_field))
+        print()
+
+    # 決定顯示格式
+    use_grouping = (
+        args.group_by == "manufacturer"
+        or (args.company and not args.group_by)
+        or (args.manufacturer and args.company)
+    )
+
+    limit = args.limit if args.limit > 0 else 0
+
+    if use_grouping:
+        print(format_grouped_by_manufacturer(results, limit=limit))
+    else:
+        display_limit = args.limit if args.limit > 0 else (10 if len(results) > 20 else len(results))
+        print(format_license_table(results, limit=display_limit))
+
+    # 仿單連結（若有）
+    has_leaflet = any(r.get("_leaflet_url") for r, _ in results)
+    if has_leaflet:
+        print("\n### 仿單連結")
+        for row, _ in results:
+            lf = row.get("_leaflet_url", "")
+            pk = row.get("_package_url", "")
+            if lf and lf != "N/A":
+                ln = get_field(row, "license_no")
+                print(f"- {ln} 說明書：{lf}")
+            if pk and pk != "N/A":
+                ln = get_field(row, "license_no")
+                print(f"- {ln} 外盒：{pk}")
+
+    print(format_cache_footer(get_cache_info()))
+
+
+if __name__ == "__main__":
+    main()

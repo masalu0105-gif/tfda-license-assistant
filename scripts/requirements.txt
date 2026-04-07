@@ -1,0 +1,3 @@
+# TFDA License Assistant
+# 僅使用 Python 3.8+ 標準函式庫，無額外相依套件
+# 使用的標準函式庫：csv, json, urllib, difflib, argparse, pathlib, datetime, zipfile, io, os, sys
