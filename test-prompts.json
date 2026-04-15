@@ -1,0 +1,20 @@
+[
+  {
+    "id": 1,
+    "scenario": "競品代理商分析（最典型 happy path）",
+    "prompt": "醫兆代理的 ARKRAY 在台灣有哪些醫療器材許可證？",
+    "expected": "呼叫 query_tfda.py --company 醫兆 --manufacturer ARKRAY，結果用 Markdown 表格列出許可證字號/品名/類別，附資料來源日期"
+  },
+  {
+    "id": 2,
+    "scenario": "跨公司試劑查詢（中等複雜度）",
+    "prompt": "HbA1c 試劑在台灣有哪些公司在賣？各公司代理哪些廠牌？",
+    "expected": "呼叫 --reagent HbA1c --group-by manufacturer，摘要統計（共 N 張、前幾大廠牌），表格分組顯示公司×廠牌矩陣"
+  },
+  {
+    "id": 3,
+    "scenario": "QSD 到期檢查（有歧義 + 日期邏輯）",
+    "prompt": "幫我查醫兆的 QSD 登錄，有哪些快到期了？",
+    "expected": "呼叫 --qsd 醫兆，列出 QSD 清單，標示到期日，對 6 個月內到期的加警示標記（⚠️ 或類似），附資料來源日期"
+  }
+]
