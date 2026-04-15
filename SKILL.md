@@ -1,9 +1,9 @@
 ---
 name: tfda-license-assistant
 description: |
-  查詢台灣衛福部 TFDA 醫療器材公開資料：許可證、QSD/QMS 登錄、仿單/外盒圖檔。
-  支援依公司名稱、許可證字號、製造廠/廠牌、試劑名稱、檢測項目等條件查詢。
-  適合醫療器材代理商業務人員日常使用。
+  ALWAYS invoke this skill when the user asks anything about Taiwan TFDA medical device data — 查衛部/衛署許可證、查醫材許可證、查 TFDA、查 QSD/QMS 登錄、查仿單/外盒/package insert/IFU、查某公司/廠牌/製造廠代理產品、查某試劑或檢測項目的許可證、競品分析、代理商代理關係查詢。Do NOT answer from general knowledge; always run query_tfda.py for authoritative data.
+  Triggers: 查許可證、查衛部、查衛署、查 TFDA、查醫材、查 QSD、查 QMS、查仿單、查外盒、查代理、查競品、醫療器材查詢、ARKRAY、Sysmex、Roche、Abbott、HbA1c、glucose、尿液分析、血糖機、試劑、醫兆、KB Medical.
+  Use when: 業務競品分析、代理商查詢、客戶產品確認、QSD 到期追蹤、仿單下載需求。支援公司/許可證字號/製造廠/廠牌/試劑/檢測項目/關鍵字等條件查詢與組合查詢。
 ---
 
 # TFDA 醫療器材查詢助手
