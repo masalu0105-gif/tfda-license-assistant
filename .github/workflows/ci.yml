@@ -31,7 +31,7 @@ jobs:
         run: ruff check scripts/ tests/
 
       - name: Run tests
-        run: pytest tests/ --cov=scripts --cov-report=term-missing
+        run: pytest tests/ --cov=scripts --cov-report=term-missing -v --tb=short
 
       - name: Enforce per-module coverage thresholds (core modules)
         run: |
