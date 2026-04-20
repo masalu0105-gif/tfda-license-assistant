@@ -30,6 +30,7 @@ from tfda_formatter import (
 from tfda_normalize import get_field, normalize_dataset
 from tfda_search import (
     apply_cross_filter,
+    distinct_field_values,
     plan_query,
     search_by_company,
     search_by_keyword,
@@ -41,7 +42,14 @@ from tfda_search import (
     search_leaflet,
     search_manufacturer_with_alias,
     search_qsd,
+    suggest_similar,
 )
+
+# primary 欄位 → 對應 distinct 欄位（用於 typo suggestion）
+_SUGGEST_FIELD_MAP = {
+    "company": "company_name",
+    "manufacturer": "manufacturer",
+}
 
 # Primary field → (搜尋函式, 是否支援 alias fallback)
 # 支援 alias 的 wrapper 回傳 (results, alias_used)，其餘直接回 results。
@@ -236,6 +244,17 @@ def main() -> None:
 
         if alias_used:
             print(f"提示：原查詢「{primary_value}」0 筆，透過 alias「{alias_used}」查到結果")
+
+        # 0 筆 + 有 distinct 欄位可查 → 提供「是不是要查 XXX」建議
+        if not results and primary in _SUGGEST_FIELD_MAP:
+            distinct = distinct_field_values(
+                license_normalized, _SUGGEST_FIELD_MAP[primary]
+            )
+            suggestions = suggest_similar(primary_value, distinct, n=3, cutoff=0.6)
+            if suggestions:
+                print(f"\n查無「{primary_value}」相關資料，是不是要查：")
+                for s in suggestions:
+                    print(f"  - {s}")
 
         if cross_filters:
             results = apply_cross_filter(results, **cross_filters)

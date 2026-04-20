@@ -168,6 +168,59 @@ def search_company_with_alias(rows, query):
     )
 
 
+# ─────────────────────── typo suggestion ───────────────────────
+
+def distinct_field_values(rows: List[Dict], field: str) -> List[str]:
+    """取資料集中某個欄位的 distinct 非空值。"""
+    seen = set()
+    values = []
+    for row in rows:
+        val = get_field(row, field, "")
+        if val and val != "N/A" and val not in seen:
+            seen.add(val)
+            values.append(val)
+    return values
+
+
+def suggest_similar(query: str, candidates: List[str],
+                    n: int = 3, cutoff: float = 0.5) -> List[str]:
+    """用 difflib 找與 query 最接近的 n 個候選字串。
+
+    評分方式：對每個 candidate 取下列兩者最大值
+      (a) ratio(query, candidate)：整字串相似度
+      (b) ratio(query, candidate[:len(query)])：前綴相似度
+    這讓「醫趙」能建議「醫兆科技股份有限公司」（前綴「醫兆」相似度 0.5），
+    同時不損害英文短典型 case（ARKRAI → ARKRAY）。
+
+    用於「0 筆時問『是不是要查 XXX』」。
+    呼叫端須先取 distinct set 傳入；本函式對輸出去重並按分數排序。
+    """
+    if not query or not candidates:
+        return []
+    q = to_halfwidth(query).lower().strip()
+    if not q:
+        return []
+
+    scored: List[Tuple[float, str]] = []
+    seen_norm = set()
+    for orig in candidates:
+        norm = to_halfwidth(orig).lower().strip()
+        if not norm or norm in seen_norm:
+            continue
+        seen_norm.add(norm)
+
+        r_full = difflib.SequenceMatcher(None, q, norm).ratio()
+        r_prefix = 0.0
+        if len(norm) >= len(q):
+            r_prefix = difflib.SequenceMatcher(None, q, norm[: len(q)]).ratio()
+        score = max(r_full, r_prefix)
+        if score >= cutoff:
+            scored.append((score, orig))
+
+    scored.sort(key=lambda x: (-x[0], x[1]))
+    return [orig for _, orig in scored[:n]]
+
+
 def search_by_product(rows: List[Dict], product_name: str) -> List[Tuple[Dict, str]]:
     """依產品名稱（中英文）查詢。"""
     results = []
