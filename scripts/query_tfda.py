@@ -14,6 +14,8 @@ import argparse
 import logging
 import os
 import sys
+import time
+from typing import Optional
 
 # 確保可以 import 同目錄模組
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -48,6 +50,7 @@ def _configure_logging(quiet: bool, verbose: bool) -> None:
     log.propagate = False
 
 from tfda_datasets import get_cache_info, load_dataset, update_all_cache
+from tfda_metrics import record as record_metric
 from tfda_formatter import (
     format_cache_footer,
     format_grouped_by_manufacturer,
@@ -157,24 +160,86 @@ def build_parser() -> argparse.ArgumentParser:
                       help="抑制進度訊息，只輸出結果與錯誤")
     misc.add_argument("--verbose", action="store_true",
                       help="顯示 DEBUG 級詳細 log")
+    misc.add_argument("--log-query", action="store_true",
+                      help="將查詢字串記入 metrics.jsonl（預設不記，PII 考量）")
+    misc.add_argument("--no-metrics", action="store_true",
+                      help="停用 metrics 寫入（整段執行不追蹤）")
 
     return parser
 
 
+def _cache_age_hours_for(query_type: str) -> Optional[float]:
+    """取目前執行用到的資料集快取年齡（小時）。None 表示無快取資訊。"""
+    from datetime import datetime as _dt
+    mapping = {
+        "company": "license", "manufacturer": "license", "reagent": "license",
+        "product": "license", "keyword": "license", "license": "license",
+        "qsd": "qsd", "leaflet": "leaflet",
+    }
+    key = mapping.get(query_type)
+    if not key:
+        return None
+    info = get_cache_info().get(key, {})
+    date_str = info.get("cache_date")
+    if not date_str:
+        return None
+    try:
+        d = _dt.strptime(date_str, "%Y-%m-%d")
+        return (_dt.now() - d).total_seconds() / 3600.0
+    except ValueError:
+        return None
+
+
 def main() -> None:
-    """主程式入口。"""
+    """主程式入口。包一層 timing + metrics，實際邏輯在 _run_main。"""
     parser = build_parser()
     args = parser.parse_args()
     _configure_logging(quiet=args.quiet, verbose=args.verbose)
 
+    start = time.perf_counter()
+    state = {
+        "query_type": "help",
+        "result_count": 0,
+        "fallback_used": [],
+        "query": None,
+    }
+    try:
+        _run_main(args, state, parser)
+    finally:
+        if not getattr(args, "no_metrics", False):
+            duration_ms = (time.perf_counter() - start) * 1000.0
+            record_metric(
+                query_type=state["query_type"],
+                result_count=state["result_count"],
+                duration_ms=duration_ms,
+                fallback_used=state["fallback_used"],
+                cache_age_hours=_cache_age_hours_for(state["query_type"]),
+                query=state["query"] if args.log_query else None,
+            )
+
+
+def _run_main(args, state: dict, parser: argparse.ArgumentParser) -> None:
+    """實際執行查詢。state 為 mutable dict，供 main() 結尾寫 metrics。"""
+    if args.log_query:
+        # 只在使用者明確允許時才把查詢字串放進 state
+        state["query"] = next(
+            (getattr(args, f, None) for f in (
+                "license", "company", "manufacturer", "reagent", "product",
+                "keyword", "qsd", "leaflet",
+            ) if getattr(args, f, None)),
+            None,
+        )
+
     # 快取管理
     if args.update_cache:
+        state["query_type"] = "update_cache"
         log.info("正在更新所有資料集快取...")
         update_all_cache()
         log.info("快取更新完成。")
         return
 
     if args.cache_info:
+        state["query_type"] = "cache_info"
         info = get_cache_info()
         print("快取狀態：")
         for key, val in info.items():
@@ -195,11 +260,13 @@ def main() -> None:
 
     # === QSD 查詢 ===
     if args.qsd:
+        state["query_type"] = "qsd"
         log.info("正在查詢 QSD/QMS 資料：%s ...", args.qsd)
         try:
             qsd_data = load_dataset("qsd")
             qsd_normalized = normalize_dataset(qsd_data, "qsd")
             results = search_qsd(qsd_normalized, args.qsd)
+            state["result_count"] = len(results)
 
             if args.count_only:
                 print(f"共找到 {len(results)} 筆")
@@ -215,11 +282,13 @@ def main() -> None:
 
     # === 仿單查詢 ===
     if args.leaflet:
+        state["query_type"] = "leaflet"
         log.info("正在查詢仿單/外盒：%s ...", args.leaflet)
         try:
             leaflet_data = load_dataset("leaflet")
             leaflet_normalized = normalize_dataset(leaflet_data, "leaflet")
             results = search_leaflet(leaflet_normalized, args.leaflet)
+            state["result_count"] = len(results)
 
             if args.count_only:
                 print(f"共找到 {len(results)} 筆")
@@ -246,6 +315,7 @@ def main() -> None:
 
     # === license 為 exclusive 查詢：找到後附仿單連結後直接結束路由 ===
     if args.license:
+        state["query_type"] = "license"
         log.info("查詢許可證字號：%s", args.license)
         results = search_by_license_no(license_normalized, args.license)
 
@@ -271,6 +341,7 @@ def main() -> None:
             log.warning("未指定有效的查詢條件。")
             return
 
+        state["query_type"] = primary
         primary_value = getattr(args, primary)
         if cross_filters:
             parts = [f"{_field_label_zh(primary)}={primary_value}"] + [
@@ -289,6 +360,7 @@ def main() -> None:
             results = _PRIMARY_SEARCH[primary](license_normalized, primary_value)
 
         if alias_used:
+            state["fallback_used"].append("alias")
             log.info("提示：原查詢「%s」0 筆，透過 alias「%s」查到結果",
                      primary_value, alias_used)
 
@@ -297,14 +369,17 @@ def main() -> None:
             distinct = distinct_field_values(
                 license_normalized, _SUGGEST_FIELD_MAP[primary]
             )
-            suggestions = suggest_similar(primary_value, distinct, n=3, cutoff=0.6)
+            suggestions = suggest_similar(primary_value, distinct, n=3, cutoff=0.5)
             if suggestions:
+                state["fallback_used"].append("suggest")
                 log.warning("查無「%s」相關資料，是不是要查：", primary_value)
                 for s in suggestions:
                     log.warning("  - %s", s)
 
         if cross_filters:
             results = apply_cross_filter(results, **cross_filters)
+
+    state["result_count"] = len(results) if results else 0
 
     # === 輸出 ===
     if args.count_only:

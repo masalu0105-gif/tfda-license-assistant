@@ -133,6 +133,12 @@ python scripts/query_tfda.py --company "醫兆" --json --quiet | jq .
 
 # 顯示 DEBUG 級詳細 log（除錯用）
 python scripts/query_tfda.py --company "醫兆" --verbose
+
+# 將查詢字串記入 metrics.jsonl（預設不記，PII 考量）
+python scripts/query_tfda.py --company "醫兆" --log-query
+
+# 此次執行不寫 metrics
+python scripts/query_tfda.py --company "醫兆" --no-metrics
 ```
 
 ## 回答格式原則
