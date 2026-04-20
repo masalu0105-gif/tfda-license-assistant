@@ -20,6 +20,35 @@ from typing import Optional
 # 確保可以 import 同目錄模組
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
+from tfda_datasets import get_cache_info, load_dataset, update_all_cache  # noqa: E402
+from tfda_formatter import (  # noqa: E402
+    format_cache_footer,
+    format_grouped_by_manufacturer,
+    format_json,
+    format_leaflet_table,
+    format_license_table,
+    format_qsd_table,
+    format_summary,
+)
+from tfda_metrics import record as record_metric  # noqa: E402
+from tfda_normalize import get_field, normalize_dataset  # noqa: E402
+from tfda_search import (  # noqa: E402
+    apply_cross_filter,
+    distinct_field_values,
+    plan_query,
+    search_by_company,
+    search_by_keyword,
+    search_by_license_no,
+    search_by_manufacturer,
+    search_by_product,
+    search_by_reagent,
+    search_company_with_alias,
+    search_leaflet,
+    search_manufacturer_with_alias,
+    search_qsd,
+    suggest_similar,
+)
+
 # Progress / 提示訊息走 logger（預設輸出到 stderr）；
 # 實際結果（表格、JSON、count）走 print() 到 stdout，方便下游 pipe。
 log = logging.getLogger("tfda")
@@ -48,35 +77,6 @@ def _configure_logging(quiet: bool, verbose: bool) -> None:
     log.addHandler(handler)
     log.setLevel(level)
     log.propagate = False
-
-from tfda_datasets import get_cache_info, load_dataset, update_all_cache
-from tfda_metrics import record as record_metric
-from tfda_formatter import (
-    format_cache_footer,
-    format_grouped_by_manufacturer,
-    format_json,
-    format_leaflet_table,
-    format_license_table,
-    format_qsd_table,
-    format_summary,
-)
-from tfda_normalize import get_field, normalize_dataset
-from tfda_search import (
-    apply_cross_filter,
-    distinct_field_values,
-    plan_query,
-    search_by_company,
-    search_by_keyword,
-    search_by_license_no,
-    search_by_manufacturer,
-    search_by_product,
-    search_by_reagent,
-    search_company_with_alias,
-    search_leaflet,
-    search_manufacturer_with_alias,
-    search_qsd,
-    suggest_similar,
-)
 
 # primary 欄位 → 對應 distinct 欄位（用於 typo suggestion）
 _SUGGEST_FIELD_MAP = {
