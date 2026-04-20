@@ -29,8 +29,15 @@ from tfda_datasets import load_dataset
 from tfda_normalize import normalize_dataset, get_field
 
 # ─── 設定 ────────────────────────────────────────────────────
-DEFAULT_BASE   = '//OSUN-AIMW-A/D_Drive/雲端資料庫_工作副本'
-DEFAULT_OUTPUT = os.path.join(os.path.dirname(__file__), '..', 'output', '醫兆產品許可證追蹤表.xlsx')
+# 預設雲端磁碟路徑；可用 TFDA_SCAN_BASE 環境變數 override
+DEFAULT_BASE   = os.environ.get(
+    'TFDA_SCAN_BASE',
+    '//OSUN-AIMW-A/D_Drive/雲端資料庫_工作副本',
+)
+DEFAULT_OUTPUT = os.environ.get(
+    'TFDA_LICENSE_OUTPUT',
+    os.path.join(os.path.dirname(__file__), '..', 'output', '醫兆產品許可證追蹤表.xlsx'),
+)
 
 SKIP_DIRS = {
     'SOP', 'SDS', 'SIP', 'IFU', '仿單', '操作手冊', '維修手冊',

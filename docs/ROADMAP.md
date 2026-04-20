@@ -90,13 +90,13 @@
 
 ## Phase 2 — Repo 衛生
 
-### [ ] P2.1 README.md
+### [x] P2.1 README.md
 
 **DoD**：包含 (a) 一段 2 句話專案定位；(b) Install 指令；(c) 5 個最常用查詢範例；(d) `scripts/` vs `company/` 分工說明；(e) 如何安裝為 Claude Code skill；(f) 資料來源與授權聲明。
 
 **驗證**：請**另一位**沒看過此 repo 的同事照 README 跑一次 `--company 醫兆`，不需看程式碼即可成功。
 
-### [ ] P2.2 requirements 分拆
+### [x] P2.2 requirements 分拆
 
 | 檔案 | 內容 |
 |------|------|
@@ -106,20 +106,20 @@
 
 **DoD**：`pip install -r scripts/requirements.txt` 後能跑完整 CLI；`pip install -r company/requirements.txt` 後能跑 `build_license_db.py`。
 
-### [ ] P2.3 GitHub Actions CI
+### [x] P2.3 GitHub Actions CI
 
 **DoD**：(a) 在 push/PR 跑 ruff + pytest + coverage；(b) Python 3.8 / 3.10 / 3.12 三版 matrix；(c) `company/` 排除在公開 CI log 外（或確認無敏感資訊）；(d) coverage 低於 85% CI fail。
 
 **驗證**：PR 建立後 Actions 顯示綠色；故意引入 syntax error 確認會紅。
 
-### [ ] P2.4 SKILL.md ↔ code 一致性檢查（防止未來分裂）
+### [x] P2.4 SKILL.md ↔ code 一致性檢查（防止未來分裂）
 
 | 項目 | 內容 |
 |------|------|
 | **完成定義** | `tests/test_skill_md_consistency.py`：(a) parse SKILL.md「如何執行」區塊的所有 `--flag`，驗證 argparse 都有定義；(b) 反向檢查：argparse 的 flag 都要在 SKILL.md 出現；(c) 檢查點表格裡提到的行為（如 `--limit 5` 預覽）對應的 flag 存在。 |
 | **驗證指令** | `pytest tests/test_skill_md_consistency.py -v` |
 
-### [ ] P2.5 硬編碼路徑修正
+### [x] P2.5 硬編碼路徑修正
 
 **DoD**：`SKILL.md` 範例路徑改為相對路徑或 `$SKILL_DIR`；`company/build_license_db.py` 的 `DEFAULT_BASE` 加環境變數 override（`TFDA_SCAN_BASE`）。
 
