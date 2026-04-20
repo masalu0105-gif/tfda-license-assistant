@@ -3,18 +3,90 @@
     "id": 1,
     "scenario": "競品代理商分析（最典型 happy path）",
     "prompt": "醫兆代理的 ARKRAY 在台灣有哪些醫療器材許可證？",
-    "expected": "呼叫 query_tfda.py --company 醫兆 --manufacturer ARKRAY，結果用 Markdown 表格列出許可證字號/品名/類別，附資料來源日期"
+    "expected": "呼叫 query_tfda.py --company 醫兆 --manufacturer ARKRAY，結果用 Markdown 表格列出許可證字號/品名/類別，附資料來源日期",
+    "expected_cli_args": ["--company", "醫兆", "--manufacturer", "ARKRAY"],
+    "expected_contains": ["衛部醫器輸字", "ARKRAY", "資料來源"],
+    "expected_row_count_min": 4
   },
   {
     "id": 2,
     "scenario": "跨公司試劑查詢（中等複雜度）",
     "prompt": "HbA1c 試劑在台灣有哪些公司在賣？各公司代理哪些廠牌？",
-    "expected": "呼叫 --reagent HbA1c --group-by manufacturer，摘要統計（共 N 張、前幾大廠牌），表格分組顯示公司×廠牌矩陣"
+    "expected": "呼叫 --reagent HbA1c，摘要統計（共 N 張、前幾大廠牌），列出公司×廠牌",
+    "expected_cli_args": ["--reagent", "HbA1c"],
+    "expected_contains": ["HbA1c", "糖化"],
+    "expected_row_count_min": 2
   },
   {
     "id": 3,
     "scenario": "QSD 到期檢查（有歧義 + 日期邏輯）",
     "prompt": "幫我查醫兆的 QSD 登錄，有哪些快到期了？",
-    "expected": "呼叫 --qsd 醫兆，列出 QSD 清單，標示到期日，對 6 個月內到期的加警示標記（⚠️ 或類似），附資料來源日期"
+    "expected": "呼叫 --qsd 醫兆，列出 QSD 清單，標示到期日，對 6 個月內到期的加警示標記，附資料來源日期",
+    "expected_cli_args": ["--qsd", "醫兆"],
+    "expected_contains": ["醫兆", "有效期限"],
+    "expected_row_count_min": 2
+  },
+  {
+    "id": 4,
+    "scenario": "單一許可證字號查詢",
+    "prompt": "衛部醫器輸字第034001號 是什麼產品？",
+    "expected": "呼叫 --license 衛部醫器輸字第034001號，列出產品詳情並附仿單連結",
+    "expected_cli_args": ["--license", "衛部醫器輸字第034001號"],
+    "expected_contains": ["糖化血紅素", "醫兆"],
+    "expected_row_count_min": 1
+  },
+  {
+    "id": 5,
+    "scenario": "純製造廠競品分析",
+    "prompt": "ARKRAY 在台灣有哪些代理商、哪些產品？",
+    "expected": "呼叫 --manufacturer ARKRAY，依代理商分組列出",
+    "expected_cli_args": ["--manufacturer", "ARKRAY"],
+    "expected_contains": ["ARKRAY"],
+    "expected_row_count_min": 4
+  },
+  {
+    "id": 6,
+    "scenario": "仿單連結查詢",
+    "prompt": "衛部醫器輸字第034001號的仿單在哪裡？",
+    "expected": "呼叫 --leaflet 衛部醫器輸字第034001號，回傳 PDF 連結",
+    "expected_cli_args": ["--leaflet", "衛部醫器輸字第034001號"],
+    "expected_contains": ["說明書", "[查看]"],
+    "expected_row_count_min": 1
+  },
+  {
+    "id": 7,
+    "scenario": "全文關鍵字搜尋",
+    "prompt": "查一下有跟尿液相關的產品",
+    "expected": "呼叫 --keyword 尿液，列出所有含「尿液」的產品",
+    "expected_cli_args": ["--keyword", "尿液"],
+    "expected_contains": ["尿液"],
+    "expected_row_count_min": 2
+  },
+  {
+    "id": 8,
+    "scenario": "公司 × 試劑組合查詢",
+    "prompt": "醫兆代理的 HbA1c 試劑有哪些？",
+    "expected": "呼叫 --company 醫兆 --reagent HbA1c，篩出醫兆名下的 HbA1c 產品",
+    "expected_cli_args": ["--company", "醫兆", "--reagent", "HbA1c"],
+    "expected_contains": ["醫兆"],
+    "expected_row_count_min": 1
+  },
+  {
+    "id": 9,
+    "scenario": "產品名稱查詢",
+    "prompt": "Glucose Meter 的許可證有哪些？",
+    "expected": "呼叫 --product Glucose Meter，列出符合產品名的許可證",
+    "expected_cli_args": ["--product", "Glucose Meter"],
+    "expected_contains": ["Glucose Meter"],
+    "expected_row_count_min": 1
+  },
+  {
+    "id": 10,
+    "scenario": "JSON 輸出串接下游工具",
+    "prompt": "把醫兆的產品清單輸出成 JSON",
+    "expected": "呼叫 --company 醫兆 --json，回傳可被 jq 解析的 JSON 陣列",
+    "expected_cli_args": ["--company", "醫兆", "--json"],
+    "expected_json": true,
+    "expected_row_count_min": 8
   }
 ]
