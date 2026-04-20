@@ -131,11 +131,16 @@ def test_quiet_and_verbose_mutual(tmp_path):
 # ───── 錯誤仍會印（logger.error） ─────
 
 def test_errors_printed_even_with_quiet(tmp_path):
-    """--quiet 不應抑制 error 訊息。"""
+    """--quiet 不應抑制 error 訊息。
+
+    觸發方式：meta 保持 valid（避免 CLI 在 CI 有網路時自動重新下載真實
+    TFDA 資料），但把 license.csv 寫成壞 UTF-8，讓 load_dataset 解碼
+    拋例外。此作法不依賴網路狀態。
+    """
     _seed_cache(tmp_path)
-    # 模擬錯誤：故意把 license cache 檔刪掉，看 --company 查詢錯誤訊息
-    (tmp_path / ".cache" / "tfda" / "license.csv").unlink()
-    (tmp_path / ".cache" / "tfda" / "license_meta.json").unlink()
+    # 蓋掉 CSV：壞 UTF-8 序列必觸發 UnicodeDecodeError
+    (tmp_path / ".cache" / "tfda" / "license.csv").write_bytes(
+        b"\x80\x81\x82 invalid utf-8 bytes \xff\xfe"
+    )
     r = _run(["--company", "醫兆", "--quiet"], tmp_path)
-    # 應有 error 訊息（stderr）
     assert "錯誤" in r.stderr or "無法" in r.stderr or r.returncode != 0

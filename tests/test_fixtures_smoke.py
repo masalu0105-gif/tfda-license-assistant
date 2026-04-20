@@ -32,8 +32,11 @@ def test_normalize_qsd_許可編號_splits_correctly(normalized_qsd_rows):
 
 
 def test_isolated_cache_is_tmp(isolated_cache, tmp_path):
-    """確認測試用的 CACHE_DIR 在 tmp_path 下，不會碰到使用者家目錄。"""
-    assert Path(isolated_cache).is_relative_to(tmp_path)
+    """確認測試用的 CACHE_DIR 在 tmp_path 下，不會碰到使用者家目錄。
+
+    用 str.startswith 而非 Path.is_relative_to（後者 Python 3.9+ 才支援）。
+    """
+    assert str(Path(isolated_cache)).startswith(str(tmp_path))
     import tfda_datasets
     assert tfda_datasets.CACHE_DIR == isolated_cache
 
