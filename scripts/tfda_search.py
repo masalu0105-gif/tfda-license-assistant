@@ -7,6 +7,7 @@ import difflib
 import re
 from typing import Dict, List, Optional, Tuple
 
+from tfda_aliases import expand_company, expand_manufacturer
 from tfda_normalize import get_field, get_searchable_text, to_halfwidth
 
 # 許可證字號偵測：用 pattern 組合提高精準度，避免單一字（輸/製/診）誤判
@@ -125,6 +126,46 @@ def search_by_manufacturer(rows: List[Dict], manufacturer: str) -> List[Tuple[Di
             results.append((row, match_type))
 
     return _sort_results(results)
+
+
+def search_with_alias_fallback(
+    rows: List[Dict],
+    query: str,
+    primary_fn,
+    alias_expand_fn,
+) -> Tuple[List[Tuple[Dict, str]], Optional[str]]:
+    """先用 primary_fn 直接查；0 筆時依 alias_expand_fn 逐一重試。
+
+    回傳 (results, alias_used)。alias_used = None 表示主查詢即命中，
+    否則為實際觸發命中的 alias 字串（供 UI 標示「透過 alias 查到」）。
+    """
+    primary = primary_fn(rows, query)
+    if primary:
+        return primary, None
+
+    # Alias 重試
+    alternatives = alias_expand_fn(query)
+    for alt in alternatives:
+        if alt.strip().lower() == query.strip().lower():
+            continue
+        hits = primary_fn(rows, alt)
+        if hits:
+            return hits, alt
+    return [], None
+
+
+def search_manufacturer_with_alias(rows, query):
+    """製造廠查詢 + alias fallback wrapper。"""
+    return search_with_alias_fallback(
+        rows, query, search_by_manufacturer, expand_manufacturer
+    )
+
+
+def search_company_with_alias(rows, query):
+    """公司查詢 + alias fallback wrapper。"""
+    return search_with_alias_fallback(
+        rows, query, search_by_company, expand_company
+    )
 
 
 def search_by_product(rows: List[Dict], product_name: str) -> List[Tuple[Dict, str]]:

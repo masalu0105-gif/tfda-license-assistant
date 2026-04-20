@@ -37,17 +37,25 @@ from tfda_search import (
     search_by_manufacturer,
     search_by_product,
     search_by_reagent,
+    search_company_with_alias,
     search_leaflet,
+    search_manufacturer_with_alias,
     search_qsd,
 )
 
-# Primary field → 對應搜尋函式
+# Primary field → (搜尋函式, 是否支援 alias fallback)
+# 支援 alias 的 wrapper 回傳 (results, alias_used)，其餘直接回 results。
 _PRIMARY_SEARCH = {
     "company": search_by_company,
     "manufacturer": search_by_manufacturer,
     "reagent": search_by_reagent,
     "product": search_by_product,
     "keyword": search_by_keyword,
+}
+
+_ALIAS_AWARE_SEARCH = {
+    "company": search_company_with_alias,
+    "manufacturer": search_manufacturer_with_alias,
 }
 
 
@@ -218,7 +226,16 @@ def main() -> None:
         else:
             print(f"查詢{_field_label_zh(primary)}：{primary_value}")
 
-        results = _PRIMARY_SEARCH[primary](license_normalized, primary_value)
+        alias_used = None
+        if primary in _ALIAS_AWARE_SEARCH:
+            results, alias_used = _ALIAS_AWARE_SEARCH[primary](
+                license_normalized, primary_value
+            )
+        else:
+            results = _PRIMARY_SEARCH[primary](license_normalized, primary_value)
+
+        if alias_used:
+            print(f"提示：原查詢「{primary_value}」0 筆，透過 alias「{alias_used}」查到結果")
 
         if cross_filters:
             results = apply_cross_filter(results, **cross_filters)

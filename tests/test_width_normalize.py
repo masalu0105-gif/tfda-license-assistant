@@ -8,10 +8,8 @@
 """
 
 import pytest
-
 from tfda_normalize import to_halfwidth
 from tfda_search import MATCH_EXACT, _match_value, search_by_manufacturer
-
 
 # ───── to_halfwidth 純函式 ─────
 
