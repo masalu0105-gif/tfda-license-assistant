@@ -10,6 +10,18 @@ from typing import Dict, List, Optional, Tuple
 from tfda_normalize import get_field, get_searchable_text
 
 
+# 許可證字號偵測：用 pattern 組合提高精準度，避免單一字（輸/製/診）誤判
+# 涵蓋：衛[部署授]、醫器、輸字/製字/輸壹字/陸輸字/登字/診字、字第數字
+_LICENSE_NO_PATTERNS: Tuple[re.Pattern, ...] = (
+    re.compile(r"衛[部署授]"),
+    re.compile(r"醫器"),
+    re.compile(r"[輸製][壹一二三]?字"),
+    re.compile(r"陸輸"),
+    re.compile(r"字第\s*[A-Za-z]?\d"),
+    re.compile(r"[診登]字"),
+)
+
+
 # 可組合查詢的欄位（依優先順序當 primary）
 COMBINABLE_FIELDS: Tuple[str, ...] = (
     "company", "manufacturer", "reagent", "product", "keyword",
@@ -262,9 +274,15 @@ def apply_cross_filter(
 
 
 def _looks_like_license_no(text: str) -> bool:
-    """判斷輸入是否看起來像許可證字號。"""
-    keywords = ["衛署", "衛部", "醫器", "輸", "製", "陸輸", "診"]
-    return any(kw in text for kw in keywords)
+    """判斷輸入是否看起來像許可證字號。
+
+    用多 pattern OR 判斷，只要命中任一條即視為許可證字號。
+    pattern 組合取代舊版單字關鍵字（輸/製/診 單字會誤判「製造」
+    「輸入」「診斷」等常見查詢）。
+    """
+    if not text:
+        return False
+    return any(p.search(text) for p in _LICENSE_NO_PATTERNS)
 
 
 def _best_match(*match_types: Optional[str]) -> Optional[str]:
