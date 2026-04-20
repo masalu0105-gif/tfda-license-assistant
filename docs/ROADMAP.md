@@ -127,7 +127,7 @@
 
 ## Phase 3 — Fallback 實作（SKILL.md 承諾）
 
-### [ ] P3.1 全形 ↔ 半形正規化
+### [x] P3.1 全形 ↔ 半形正規化
 
 | 項目 | 內容 |
 |------|------|
@@ -135,7 +135,7 @@
 | **驗證** | `pytest tests/test_width_normalize.py`：「ＡＲＫＲＡＹ」查到 ARKRAY 的結果。 |
 | **不能破壞** | 原本 ARKRAY → ARKRAY 的筆數 ±0。 |
 
-### [ ] P3.2 中英文廠牌 alias（外部 JSON）
+### [x] P3.2 中英文廠牌 alias（外部 JSON）
 
 | 項目 | 內容 |
 |------|------|
@@ -144,7 +144,7 @@
 | **驗證** | `pytest tests/test_alias_fallback.py`：查「愛科萊」應查到 ARKRAY 結果。 |
 | **維護流程** | PR 加 alias 必須附上來源（官方網站/TFDA 登錄紀錄截圖）。 |
 
-### [ ] P3.3 0 筆時「是不是要查 XXX」建議
+### [x] P3.3 0 筆時「是不是要查 XXX」建議
 
 | 項目 | 內容 |
 |------|------|
@@ -153,7 +153,7 @@
 | **驗證** | `pytest tests/test_typo_suggestion.py`：輸入「醫趙」應建議「醫兆」。 |
 | **時間預算** | 建議計算 ≤ 200ms（單次 CLI 整體 ≤ 2s）。 |
 
-### [ ] P3.4 `--count-only` / 筆數 preview
+### [x] P3.4 `--count-only` / 筆數 preview
 
 **DoD**：(a) 新增 `--count-only` flag，只輸出 `共 N 筆` 不載入完整資料；(b) 無 flag 時若結果 > 30 筆，先印摘要再印表格（與現行一致但修 truncate 邏輯）。
 
