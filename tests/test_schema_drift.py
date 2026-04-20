@@ -24,7 +24,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).parent.parent
-SCHEMA_DIR = Path(__file__).parent / "schema"
+SCHEMA_DIR = ROOT / "schema"
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
 _TARGET = os.environ.get("TFDA_SCHEMA_TARGET", "fixture")

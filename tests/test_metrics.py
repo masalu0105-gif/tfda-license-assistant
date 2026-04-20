@@ -16,8 +16,6 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-import pytest
-
 from tfda_metrics import record
 
 ROOT = Path(__file__).parent.parent

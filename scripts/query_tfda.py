@@ -32,6 +32,7 @@ from tfda_formatter import (  # noqa: E402
 )
 from tfda_metrics import record as record_metric  # noqa: E402
 from tfda_normalize import get_field, normalize_dataset  # noqa: E402
+from tfda_schema_check import check_all_caches, report_and_log  # noqa: E402
 from tfda_search import (  # noqa: E402
     apply_cross_filter,
     distinct_field_values,
@@ -236,6 +237,15 @@ def _run_main(args, state: dict, parser: argparse.ArgumentParser) -> None:
         log.info("正在更新所有資料集快取...")
         update_all_cache()
         log.info("快取更新完成。")
+        # 自動偵測 schema drift（不 fail，僅 WARNING + log）
+        try:
+            drift_results = check_all_caches()
+            had_drift = report_and_log(drift_results)
+            if had_drift:
+                state["fallback_used"].append("schema_drift")
+                log.warning("（schema drift 紀錄：~/.cache/tfda/schema_drift.log）")
+        except Exception as e:
+            log.debug("schema drift check 失敗（非致命）：%s", e)
         return
 
     if args.cache_info:

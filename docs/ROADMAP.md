@@ -163,13 +163,13 @@
 
 ## Phase 4 — Observability
 
-### [ ] P4.1 logging 取代 print
+### [x] P4.1 logging 取代 print
 
 **DoD**：(a) 全部 `print` 分類為 stdout（結果）/ stderr（進度/警告）/ logging（debug）；(b) `--quiet` 抑制進度、`--verbose` 開 DEBUG；(c) 結果輸出不受 logging level 影響（給 pipe 用）。
 
 **驗證**：`python query_tfda.py --company 醫兆 --json --quiet 2>/dev/null | jq .` 必須能成功 parse。
 
-### [ ] P4.2 Metrics（先 log-based）
+### [x] P4.2 Metrics（先 log-based）
 
 **DoD**：每次 CLI 執行結束追加一行 JSON 到 `~/.cache/tfda/metrics.jsonl`：
 
@@ -179,7 +179,7 @@
 
 便於事後分析 fallback 觸發率、慢查詢。PII（查詢字串本身）預設**不記**，用 `--log-query` 才記。
 
-### [ ] P4.3 資料 schema drift 告警
+### [x] P4.3 資料 schema drift 告警
 
 **DoD**：`--update-cache` 完成後自動比對 `tests/schema/*.json`，欄位變動時印 WARNING（不 fail）並寫 `~/.cache/tfda/schema_drift.log`。
 
