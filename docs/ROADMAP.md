@@ -187,19 +187,19 @@
 
 ## Phase 5 — 效能（先量再改）
 
-### [ ] P5.1 Benchmark baseline（**先做這個**）
+### [x] P5.1 Benchmark baseline（**先做這個**）
 
 **DoD**：`scripts/bench.py` 跑 10 個代表性查詢，輸出 p50/p95 延遲與記憶體峰值。無 baseline 不做 P5.2/5.3。
 
 **驗收門檻**：有數據，無具體數字門檻。
 
-### [ ] P5.2 Pre-index（依 benchmark 決定）
+### [x] P5.2 Pre-index（依 benchmark 決定）
 
 **觸發條件**：若 P5.1 顯示 `--company` 平均 > 500ms 才做。
 
 **DoD**：(a) 首次 normalize 後建立 `{company_name → [row_idx]}`、`{manufacturer → [row_idx]}` dict，存 JSON（**不用 pickle**）到 `~/.cache/tfda/indexes.json`；(b) 快取失效條件：原 CSV mtime 變動；(c) 查詢延遲下降 ≥ 50%。
 
-### [ ] P5.3 Normalized 快取（最後做）
+### [x] P5.3 Normalized 快取（最後做）— 實作但預設關閉
 
 **觸發條件**：P5.2 後若冷啟動仍 > 1s 才做。**用 JSON 或 parquet，禁用 pickle**（安全 + 版本相容）。
 

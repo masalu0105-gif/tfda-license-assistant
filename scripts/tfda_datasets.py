@@ -186,7 +186,7 @@ def load_dataset(dataset_key: str, force_download: bool = False) -> List[Dict[st
 
 
 def update_all_cache() -> None:
-    """強制更新所有資料集快取。"""
+    """強制更新所有資料集快取。CSV 變動後同步清除 normalize 快取。"""
     for key, ds in DATASETS.items():
         log.info("  下載 %s（InfoId=%s）...", ds["name"], ds["info_id"])
         try:
@@ -196,6 +196,70 @@ def update_all_cache() -> None:
             log.info("  完成 (%.1f MB)", size_mb)
         except Exception as e:
             log.error("  失敗：%s", e)
+    # 強制刷新 normalize 快取（下次查詢會用新 mtime 重建）
+    invalidate_norm_cache()
+
+
+def _get_norm_cache_path(dataset_key: str) -> Path:
+    """normalize 後結果的 JSON 快取路徑。"""
+    return CACHE_DIR / f"{dataset_key}.norm.json"
+
+
+def load_normalized(dataset_key: str) -> List[Dict[str, str]]:
+    """載入並回傳已 normalize 的 rows。
+
+    行為由 `TFDA_NORM_CACHE` 環境變數控制：
+    - 未設定或 "0"（預設）：直接 load + normalize，不讀寫 norm 快取。
+      實測 150k 筆 stdlib json 解析與 CSV+normalize 耗時接近，
+      預設不啟用以避免多佔 ~230MB 磁碟。
+    - "1"：啟用 JSON 快取；存在且 source_mtime 相符時直接讀取。
+      適用場景：單一 CLI 短時間內多次呼叫（pipeline），或未來改用
+      orjson / pyarrow 加速 JSON 解析時取得額外效益。
+
+    禁用 pickle：JSON 既可讀又安全，schema 變更不會 silent 腐敗。
+    """
+    # 為避免循環 import，在函式內 import normalize
+    from tfda_normalize import normalize_dataset
+
+    csv_path = _download_dataset(dataset_key)
+    use_cache = os.environ.get("TFDA_NORM_CACHE", "0") == "1"
+    norm_path = _get_norm_cache_path(dataset_key)
+    csv_mtime = csv_path.stat().st_mtime
+
+    if use_cache and norm_path.exists():
+        try:
+            with open(norm_path, "r", encoding="utf-8") as f:
+                cached = json.load(f)
+            if cached.get("source_mtime") == csv_mtime:
+                log.debug("載入 normalize 快取：%s", dataset_key)
+                return cached["rows"]
+        except (json.JSONDecodeError, KeyError, OSError):
+            pass  # 損毀或 schema 改 → 重建
+
+    # 讀 CSV + normalize
+    rows = load_dataset(dataset_key)
+    normalized = normalize_dataset(rows, dataset_key)
+
+    # 僅在明確啟用時才寫入 norm 快取
+    if use_cache:
+        try:
+            with open(norm_path, "w", encoding="utf-8") as f:
+                json.dump({
+                    "source_mtime": csv_mtime,
+                    "rows": normalized,
+                }, f, ensure_ascii=False)
+        except OSError as e:
+            log.debug("寫 normalize 快取失敗（非致命）：%s", e)
+    return normalized
+
+
+def invalidate_norm_cache(dataset_key: Optional[str] = None) -> None:
+    """手動清除 normalize 快取。dataset_key=None 時清全部。"""
+    keys = [dataset_key] if dataset_key else list(DATASETS.keys())
+    for k in keys:
+        p = _get_norm_cache_path(k)
+        if p.exists():
+            p.unlink()
 
 
 def get_cache_info() -> Dict[str, dict]:

@@ -20,7 +20,11 @@ from typing import Optional
 # 確保可以 import 同目錄模組
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from tfda_datasets import get_cache_info, load_dataset, update_all_cache  # noqa: E402
+from tfda_datasets import (  # noqa: E402
+    get_cache_info,
+    load_normalized,
+    update_all_cache,
+)
 from tfda_formatter import (  # noqa: E402
     format_cache_footer,
     format_grouped_by_manufacturer,
@@ -31,7 +35,7 @@ from tfda_formatter import (  # noqa: E402
     format_summary,
 )
 from tfda_metrics import record as record_metric  # noqa: E402
-from tfda_normalize import get_field, normalize_dataset  # noqa: E402
+from tfda_normalize import get_field  # noqa: E402
 from tfda_schema_check import check_all_caches, report_and_log  # noqa: E402
 from tfda_search import (  # noqa: E402
     apply_cross_filter,
@@ -274,8 +278,7 @@ def _run_main(args, state: dict, parser: argparse.ArgumentParser) -> None:
         state["query_type"] = "qsd"
         log.info("正在查詢 QSD/QMS 資料：%s ...", args.qsd)
         try:
-            qsd_data = load_dataset("qsd")
-            qsd_normalized = normalize_dataset(qsd_data, "qsd")
+            qsd_normalized = load_normalized("qsd")
             results = search_qsd(qsd_normalized, args.qsd)
             state["result_count"] = len(results)
 
@@ -296,8 +299,7 @@ def _run_main(args, state: dict, parser: argparse.ArgumentParser) -> None:
         state["query_type"] = "leaflet"
         log.info("正在查詢仿單/外盒：%s ...", args.leaflet)
         try:
-            leaflet_data = load_dataset("leaflet")
-            leaflet_normalized = normalize_dataset(leaflet_data, "leaflet")
+            leaflet_normalized = load_normalized("leaflet")
             results = search_leaflet(leaflet_normalized, args.leaflet)
             state["result_count"] = len(results)
 
@@ -316,8 +318,7 @@ def _run_main(args, state: dict, parser: argparse.ArgumentParser) -> None:
     # === 許可證查詢（主資料集） ===
     log.info("正在載入許可證資料集...")
     try:
-        license_data = load_dataset("license")
-        license_normalized = normalize_dataset(license_data, "license")
+        license_normalized = load_normalized("license")
         license_indexes = build_indexes(license_normalized)
     except Exception as e:
         log.error("無法載入許可證資料集 — %s", e)
@@ -335,8 +336,7 @@ def _run_main(args, state: dict, parser: argparse.ArgumentParser) -> None:
 
         if results:
             try:
-                leaflet_data = load_dataset("leaflet")
-                leaflet_normalized = normalize_dataset(leaflet_data, "leaflet")
+                leaflet_normalized = load_normalized("leaflet")
                 for row, mt in results:
                     ln = get_field(row, "license_no")
                     leaflet_hits = search_leaflet(leaflet_normalized, ln)
