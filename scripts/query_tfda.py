@@ -22,8 +22,29 @@ from tfda_normalize import normalize_dataset, get_field
 from tfda_search import (
     search_by_license_no, search_by_company, search_by_manufacturer,
     search_by_product, search_by_reagent, search_by_keyword,
-    search_qsd, search_leaflet, apply_cross_filter,
+    search_qsd, search_leaflet, apply_cross_filter, plan_query,
 )
+
+
+# Primary field → 對應搜尋函式
+_PRIMARY_SEARCH = {
+    "company": search_by_company,
+    "manufacturer": search_by_manufacturer,
+    "reagent": search_by_reagent,
+    "product": search_by_product,
+    "keyword": search_by_keyword,
+}
+
+
+def _field_label_zh(field: str) -> str:
+    """primary/filter 欄位的中文標籤（僅用於 log）。"""
+    return {
+        "company": "公司",
+        "manufacturer": "製造廠",
+        "reagent": "試劑",
+        "product": "產品",
+        "keyword": "關鍵字",
+    }.get(field, field)
 from tfda_formatter import (
     format_license_table, format_grouped_by_manufacturer,
     format_leaflet_table, format_qsd_table, format_json,
@@ -151,12 +172,11 @@ def main() -> None:
 
     results = None
 
-    # 決定主要查詢方式
+    # === license 為 exclusive 查詢：找到後附仿單連結後直接結束路由 ===
     if args.license:
         print(f"查詢許可證字號：{args.license}")
         results = search_by_license_no(license_normalized, args.license)
 
-        # 同時查仿單
         if results:
             try:
                 leaflet_data = load_dataset("leaflet")
@@ -171,61 +191,27 @@ def main() -> None:
             except Exception:
                 pass
 
-    elif args.company and not args.manufacturer and not args.reagent and not args.product and not args.keyword:
-        # 純公司查詢
-        print(f"查詢公司：{args.company}")
-        results = search_by_company(license_normalized, args.company)
-
-    elif args.manufacturer and not args.company and not args.reagent:
-        # 純製造廠查詢
-        print(f"查詢製造廠：{args.manufacturer}")
-        results = search_by_manufacturer(license_normalized, args.manufacturer)
-
-    elif args.reagent and not args.company and not args.manufacturer:
-        # 純試劑查詢
-        print(f"查詢試劑/檢測項目：{args.reagent}")
-        results = search_by_reagent(license_normalized, args.reagent)
-
-    elif args.product:
-        print(f"查詢產品名稱：{args.product}")
-        results = search_by_product(license_normalized, args.product)
-
-    elif args.keyword:
-        print(f"全文搜尋：{args.keyword}")
-        results = search_by_keyword(license_normalized, args.keyword)
-
     else:
-        # 組合查詢：先用其中一個條件取候選集，再交叉篩選
-        if args.company:
-            print(f"組合查詢：公司={args.company}", end="")
-            results = search_by_company(license_normalized, args.company)
-        elif args.manufacturer:
-            print(f"組合查詢：製造廠={args.manufacturer}", end="")
-            results = search_by_manufacturer(license_normalized, args.manufacturer)
-        elif args.reagent:
-            print(f"組合查詢：試劑={args.reagent}", end="")
-            results = search_by_reagent(license_normalized, args.reagent)
+        # === 組合查詢：用決策表決定 primary + cross filters ===
+        primary, cross_filters = plan_query(args)
 
-        if results is not None:
-            # 套用交叉篩選
-            if args.company and not args.company == getattr(args, '_primary', None):
-                print(f", 公司={args.company}", end="")
-            if args.manufacturer:
-                print(f", 製造廠={args.manufacturer}", end="")
-            if args.reagent:
-                print(f", 試劑={args.reagent}", end="")
-            print()
+        if primary is None:
+            print("未指定有效的查詢條件。")
+            return
 
-            results = apply_cross_filter(
-                results,
-                company=args.company if results and not any(args.company == get_field(r, "company_name") for r, _ in results[:1]) else None,
-                manufacturer=args.manufacturer,
-                reagent=args.reagent,
-            )
+        primary_value = getattr(args, primary)
+        if cross_filters:
+            parts = [f"{_field_label_zh(primary)}={primary_value}"] + [
+                f"{_field_label_zh(k)}={v}" for k, v in cross_filters.items()
+            ]
+            print(f"組合查詢：{', '.join(parts)}")
+        else:
+            print(f"查詢{_field_label_zh(primary)}：{primary_value}")
 
-    if results is None:
-        print("未指定有效的查詢條件。")
-        return
+        results = _PRIMARY_SEARCH[primary](license_normalized, primary_value)
+
+        if cross_filters:
+            results = apply_cross_filter(results, **cross_filters)
 
     # === 輸出 ===
     if args.json:

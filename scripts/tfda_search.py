@@ -10,6 +10,35 @@ from typing import Dict, List, Optional, Tuple
 from tfda_normalize import get_field, get_searchable_text
 
 
+# 可組合查詢的欄位（依優先順序當 primary）
+COMBINABLE_FIELDS: Tuple[str, ...] = (
+    "company", "manufacturer", "reagent", "product", "keyword",
+)
+
+
+def plan_query(args) -> Tuple[Optional[str], Dict[str, str]]:
+    """決定組合查詢的 primary field 與 cross filters。
+
+    輸入 argparse.Namespace（或任何 getattr 可讀的物件），
+    回傳 (primary_field, cross_filters_dict)。
+
+    - primary_field 依 COMBINABLE_FIELDS 順序取第一個有值的欄位。
+    - cross_filters 包含所有「有值且非 primary」的欄位。
+    - 若沒有任何 combinable 欄位有值，回傳 (None, {})。
+    - 本函式為純函式，不做 I/O，便於單元測試。
+    """
+    provided = {
+        field: getattr(args, field, None)
+        for field in COMBINABLE_FIELDS
+        if getattr(args, field, None)
+    }
+    if not provided:
+        return None, {}
+    primary = next((f for f in COMBINABLE_FIELDS if f in provided), None)
+    cross_filters = {k: v for k, v in provided.items() if k != primary}
+    return primary, cross_filters
+
+
 # 匹配類型標記
 MATCH_EXACT = "完全匹配"
 MATCH_CONTAINS = "部分匹配"
@@ -187,6 +216,8 @@ def apply_cross_filter(
     company: Optional[str] = None,
     manufacturer: Optional[str] = None,
     reagent: Optional[str] = None,
+    product: Optional[str] = None,
+    keyword: Optional[str] = None,
 ) -> List[Tuple[Dict, str]]:
     """對已有結果套用交叉篩選條件（AND 邏輯）。"""
     filtered = results
@@ -211,6 +242,20 @@ def apply_cross_filter(
                 _match_value(reagent, row.get(f, "") or get_field(row, f, ""))
                 for f in search_fields
             )
+        ]
+
+    if product:
+        filtered = [
+            (row, mt) for row, mt in filtered
+            if _match_value(product, get_field(row, "product_name_zh", ""))
+            or _match_value(product, get_field(row, "product_name_en", ""))
+        ]
+
+    if keyword:
+        q = keyword.strip().lower()
+        filtered = [
+            (row, mt) for row, mt in filtered
+            if q in get_searchable_text(row).lower()
         ]
 
     return filtered
