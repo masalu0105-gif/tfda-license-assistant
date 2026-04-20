@@ -9,7 +9,6 @@ from typing import Dict, List, Optional, Tuple
 
 from tfda_normalize import get_field, get_searchable_text
 
-
 # 許可證字號偵測：用 pattern 組合提高精準度，避免單一字（輸/製/診）誤判
 # 涵蓋：衛[部署授]、醫器、輸字/製字/輸壹字/陸輸字/登字/診字、字第數字
 _LICENSE_NO_PATTERNS: Tuple[re.Pattern, ...] = (

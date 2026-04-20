@@ -7,17 +7,25 @@
 - 匹配優先序：exact > contains > fuzzy
 """
 
-import pytest
 
 from tfda_search import (
-    MATCH_CONTAINS, MATCH_EXACT, MATCH_FUZZY,
-    _best_match, _match_value, _sort_results,
-    apply_cross_filter, plan_query,
-    search_by_company, search_by_keyword, search_by_license_no,
-    search_by_manufacturer, search_by_product, search_by_reagent,
-    search_leaflet, search_qsd,
+    MATCH_CONTAINS,
+    MATCH_EXACT,
+    MATCH_FUZZY,
+    _best_match,
+    _match_value,
+    _sort_results,
+    apply_cross_filter,
+    plan_query,
+    search_by_company,
+    search_by_keyword,
+    search_by_license_no,
+    search_by_manufacturer,
+    search_by_product,
+    search_by_reagent,
+    search_leaflet,
+    search_qsd,
 )
-
 
 # ───── _match_value ─────
 

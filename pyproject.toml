@@ -1,0 +1,20 @@
+[tool.ruff]
+line-length = 100
+target-version = "py38"
+
+[tool.ruff.lint]
+# 放寬：專案非常規 package，scripts/ 靠 sys.path 相對匯入
+select = ["E", "F", "W", "I"]
+ignore = [
+    "E402",  # sys.path.insert 後才 import，必要
+    "E501",  # 中文表格可能超過 100 字元
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E501"]
+"scripts/query_tfda.py" = ["E402"]
+"company/build_license_db.py" = ["E402"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]

@@ -12,9 +12,8 @@ import zipfile
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional
-from urllib.request import urlopen, Request
-from urllib.error import URLError, HTTPError
-
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 # 資料集定義
 DATASETS: Dict[str, dict] = {

@@ -10,9 +10,10 @@
 from datetime import datetime, timedelta
 
 import pytest
-
 from tfda_formatter import (
-    WARNING_THRESHOLD_DAYS, _get_validity_status, _parse_valid_date,
+    WARNING_THRESHOLD_DAYS,
+    _get_validity_status,
+    _parse_valid_date,
 )
 
 

@@ -11,20 +11,35 @@
 """
 
 import argparse
-import sys
 import os
+import sys
 
 # 確保可以 import 同目錄模組
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from tfda_datasets import load_dataset, update_all_cache, get_cache_info
-from tfda_normalize import normalize_dataset, get_field
-from tfda_search import (
-    search_by_license_no, search_by_company, search_by_manufacturer,
-    search_by_product, search_by_reagent, search_by_keyword,
-    search_qsd, search_leaflet, apply_cross_filter, plan_query,
+from tfda_datasets import get_cache_info, load_dataset, update_all_cache
+from tfda_formatter import (
+    format_cache_footer,
+    format_grouped_by_manufacturer,
+    format_json,
+    format_leaflet_table,
+    format_license_table,
+    format_qsd_table,
+    format_summary,
 )
-
+from tfda_normalize import get_field, normalize_dataset
+from tfda_search import (
+    apply_cross_filter,
+    plan_query,
+    search_by_company,
+    search_by_keyword,
+    search_by_license_no,
+    search_by_manufacturer,
+    search_by_product,
+    search_by_reagent,
+    search_leaflet,
+    search_qsd,
+)
 
 # Primary field → 對應搜尋函式
 _PRIMARY_SEARCH = {
@@ -45,11 +60,6 @@ def _field_label_zh(field: str) -> str:
         "product": "產品",
         "keyword": "關鍵字",
     }.get(field, field)
-from tfda_formatter import (
-    format_license_table, format_grouped_by_manufacturer,
-    format_leaflet_table, format_qsd_table, format_json,
-    format_summary, format_cache_footer,
-)
 
 
 def build_parser() -> argparse.ArgumentParser:

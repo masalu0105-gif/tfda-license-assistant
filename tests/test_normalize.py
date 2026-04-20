@@ -7,12 +7,14 @@
 - get_searchable_text：文字欄位組合、空值過濾
 """
 
-import pytest
 
 from tfda_normalize import (
-    FIELD_ALIASES, get_field, get_searchable_text, normalize_row, normalize_dataset,
+    FIELD_ALIASES,
+    get_field,
+    get_searchable_text,
+    normalize_dataset,
+    normalize_row,
 )
-
 
 # ───── normalize_row ─────
 

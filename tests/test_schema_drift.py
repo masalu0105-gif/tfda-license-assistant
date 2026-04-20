@@ -109,8 +109,7 @@ def test_row_count_sanity(schema_path):
         pytest.skip(f"{_TARGET} 模式下找不到 {schema['dataset']} 的資料")
 
     _, rows = _read_csv_headers_and_count(csv_path)
-    min_key = "min_rows_cache" if _TARGET == "cache" else "min_rows_fixture"
-    # schema 用 min_rows_real 對應 cache；fixture 另外命名
+    # schema 用 min_rows_real 對應 cache target；fixture 另外命名
     if _TARGET == "cache":
         threshold = schema.get("min_rows_real", 0)
     else:

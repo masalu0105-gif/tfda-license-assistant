@@ -8,9 +8,9 @@
 """
 
 import itertools
-import pytest
 
-from tfda_search import COMBINABLE_FIELDS, plan_query, apply_cross_filter, search_by_company
+import pytest
+from tfda_search import COMBINABLE_FIELDS, apply_cross_filter, plan_query, search_by_company
 
 
 class _Args:

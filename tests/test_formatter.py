@@ -10,18 +10,22 @@
 
 import json
 
-import pytest
-
 from tfda_formatter import (
-    _field_label, format_cache_footer, format_grouped_by_manufacturer,
-    format_json, format_leaflet_table, format_license_table, format_qsd_table,
+    _field_label,
+    format_cache_footer,
+    format_grouped_by_manufacturer,
+    format_json,
+    format_leaflet_table,
+    format_license_table,
+    format_qsd_table,
     format_summary,
 )
 from tfda_search import (
     MATCH_EXACT,
-    search_by_company, search_leaflet, search_qsd,
+    search_by_company,
+    search_leaflet,
+    search_qsd,
 )
-
 
 # ───── format_license_table ─────
 

@@ -1,3 +1,6 @@
-# TFDA License Assistant
-# 僅使用 Python 3.8+ 標準函式庫，無額外相依套件
-# 使用的標準函式庫：csv, json, urllib, difflib, argparse, pathlib, datetime, zipfile, io, os, sys
+# TFDA License Assistant — 核心查詢功能
+#
+# 本模組 (scripts/) 僅使用 Python 3.8+ 標準函式庫，不需額外安裝：
+#   csv, json, urllib, difflib, argparse, re, pathlib, datetime, zipfile, io, os, sys
+#
+# 此檔刻意保持為空，僅作為「核心無外部依賴」的宣告。

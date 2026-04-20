@@ -10,7 +10,6 @@ from typing import Dict, List, Optional, Tuple
 
 from tfda_normalize import get_field
 
-
 # 到期警示閾值：對齊 SKILL.md「6 個月內到期」檢查點
 WARNING_THRESHOLD_DAYS = 180
 
