@@ -51,7 +51,8 @@ def _seed_cache(home_dir: Path):
             }))
 
 
-def _run(args, home_dir: Path) -> str:
+def _run(args, home_dir: Path):
+    """回傳 (stdout, stderr)；contains 檢查用合併，row count 用 stdout。"""
     env = {
         "HOME": str(home_dir),
         "PATH": os.environ.get("PATH", ""),
@@ -65,7 +66,7 @@ def _run(args, home_dir: Path) -> str:
     assert result.returncode == 0, (
         f"CLI 失敗 rc={result.returncode}\nstderr: {result.stderr}"
     )
-    return result.stdout
+    return result.stdout, result.stderr
 
 
 def _count_rows(output: str, *, is_json: bool) -> int:
@@ -112,25 +113,27 @@ def test_prompts_all_have_required_fields():
 def test_prompt_e2e(prompt, tmp_path):
     _seed_cache(tmp_path)
 
-    output = _run(prompt["expected_cli_args"], tmp_path)
+    stdout, stderr = _run(prompt["expected_cli_args"], tmp_path)
+    combined = stdout + stderr
 
-    # 1. 檢查必備字串
+    # 1. 檢查必備字串（合併 stdout+stderr，反映使用者看到的完整畫面）
     for needle in prompt.get("expected_contains", []):
-        assert needle in output, (
+        assert needle in combined, (
             f"prompt #{prompt['id']}：缺少關鍵字 {needle!r}\n"
-            f"--- 輸出 ---\n{output[:500]}"
+            f"--- stdout ---\n{stdout[:500]}\n"
+            f"--- stderr ---\n{stderr[:500]}"
         )
 
-    # 2. 檢查筆數
+    # 2. 檢查筆數（僅看 stdout — 結果資料流）
     is_json = prompt.get("expected_json", False)
-    rows = _count_rows(output, is_json=is_json)
+    rows = _count_rows(stdout, is_json=is_json)
     assert rows >= prompt["expected_row_count_min"], (
         f"prompt #{prompt['id']}：筆數 {rows} < 預期 {prompt['expected_row_count_min']}"
     )
 
     # 3. JSON 場景額外驗證可 parse
     if is_json:
-        idx = output.find("[")
+        idx = stdout.find("[")
         assert idx >= 0
-        data = json.loads(output[idx:])
+        data = json.loads(stdout[idx:])
         assert isinstance(data, list)

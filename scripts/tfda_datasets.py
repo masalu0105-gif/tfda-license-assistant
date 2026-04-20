@@ -7,6 +7,7 @@
 import csv
 import io
 import json
+import logging
 import os
 import zipfile
 from datetime import datetime, timedelta
@@ -14,6 +15,8 @@ from pathlib import Path
 from typing import Dict, List, Optional
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
+
+log = logging.getLogger("tfda")
 
 # 資料集定義
 DATASETS: Dict[str, dict] = {
@@ -108,7 +111,7 @@ def _download_dataset(dataset_key: str, force: bool = False) -> Path:
         # 離線模式：使用過期快取
         if cache_path.exists():
             cache_date = _get_cache_date(dataset_key)
-            print(f"  [離線] 使用本地快取（資料日期：{cache_date}）")
+            log.warning("[離線] 使用本地快取（資料日期：%s）", cache_date)
             return cache_path
         raise ConnectionError(
             f"無法下載 {ds['name']}（{url}）。\n"
@@ -185,14 +188,14 @@ def load_dataset(dataset_key: str, force_download: bool = False) -> List[Dict[st
 def update_all_cache() -> None:
     """強制更新所有資料集快取。"""
     for key, ds in DATASETS.items():
-        print(f"  下載 {ds['name']}（InfoId={ds['info_id']}）...")
+        log.info("  下載 %s（InfoId=%s）...", ds["name"], ds["info_id"])
         try:
             _download_dataset(key, force=True)
             path = _get_cache_path(key)
             size_mb = path.stat().st_size / (1024 * 1024)
-            print(f"  完成 ({size_mb:.1f} MB)")
+            log.info("  完成 (%.1f MB)", size_mb)
         except Exception as e:
-            print(f"  失敗：{e}")
+            log.error("  失敗：%s", e)
 
 
 def get_cache_info() -> Dict[str, dict]:

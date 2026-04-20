@@ -11,11 +11,41 @@
 """
 
 import argparse
+import logging
 import os
 import sys
 
 # 確保可以 import 同目錄模組
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+# Progress / 提示訊息走 logger（預設輸出到 stderr）；
+# 實際結果（表格、JSON、count）走 print() 到 stdout，方便下游 pipe。
+log = logging.getLogger("tfda")
+
+
+def _configure_logging(quiet: bool, verbose: bool) -> None:
+    """設定 logging level 與 handler。
+
+    - 預設：INFO（「正在查詢...」「提示：...」等進度訊息印到 stderr）
+    - --quiet：ERROR（只印錯誤）
+    - --verbose：DEBUG
+    stdout 的結果輸出不受 logging level 影響。
+    """
+    if quiet:
+        level = logging.ERROR
+    elif verbose:
+        level = logging.DEBUG
+    else:
+        level = logging.INFO
+
+    handler = logging.StreamHandler(stream=sys.stderr)
+    handler.setFormatter(logging.Formatter("%(message)s"))
+    # 移除舊 handler（避免 test 多次呼叫時疊加）
+    for h in list(log.handlers):
+        log.removeHandler(h)
+    log.addHandler(handler)
+    log.setLevel(level)
+    log.propagate = False
 
 from tfda_datasets import get_cache_info, load_dataset, update_all_cache
 from tfda_formatter import (
@@ -121,6 +151,13 @@ def build_parser() -> argparse.ArgumentParser:
     cache.add_argument("--update-cache", action="store_true", help="更新本地快取")
     cache.add_argument("--cache-info", action="store_true", help="顯示快取狀態")
 
+    # 執行與 log 行為
+    misc = parser.add_argument_group("執行控制")
+    misc.add_argument("--quiet", action="store_true",
+                      help="抑制進度訊息，只輸出結果與錯誤")
+    misc.add_argument("--verbose", action="store_true",
+                      help="顯示 DEBUG 級詳細 log")
+
     return parser
 
 
@@ -128,12 +165,13 @@ def main() -> None:
     """主程式入口。"""
     parser = build_parser()
     args = parser.parse_args()
+    _configure_logging(quiet=args.quiet, verbose=args.verbose)
 
     # 快取管理
     if args.update_cache:
-        print("正在更新所有資料集快取...")
+        log.info("正在更新所有資料集快取...")
         update_all_cache()
-        print("快取更新完成。")
+        log.info("快取更新完成。")
         return
 
     if args.cache_info:
@@ -157,7 +195,7 @@ def main() -> None:
 
     # === QSD 查詢 ===
     if args.qsd:
-        print(f"正在查詢 QSD/QMS 資料：{args.qsd} ...")
+        log.info("正在查詢 QSD/QMS 資料：%s ...", args.qsd)
         try:
             qsd_data = load_dataset("qsd")
             qsd_normalized = normalize_dataset(qsd_data, "qsd")
@@ -172,12 +210,12 @@ def main() -> None:
                 print(format_qsd_table(results))
                 print(format_cache_footer(get_cache_info()))
         except Exception as e:
-            print(f"錯誤：{e}", file=sys.stderr)
+            log.error("錯誤：%s", e)
         return
 
     # === 仿單查詢 ===
     if args.leaflet:
-        print(f"正在查詢仿單/外盒：{args.leaflet} ...")
+        log.info("正在查詢仿單/外盒：%s ...", args.leaflet)
         try:
             leaflet_data = load_dataset("leaflet")
             leaflet_normalized = normalize_dataset(leaflet_data, "leaflet")
@@ -192,23 +230,23 @@ def main() -> None:
                 print(format_leaflet_table(results))
                 print(format_cache_footer(get_cache_info()))
         except Exception as e:
-            print(f"錯誤：{e}", file=sys.stderr)
+            log.error("錯誤：%s", e)
         return
 
     # === 許可證查詢（主資料集） ===
-    print("正在載入許可證資料集...")
+    log.info("正在載入許可證資料集...")
     try:
         license_data = load_dataset("license")
         license_normalized = normalize_dataset(license_data, "license")
     except Exception as e:
-        print(f"錯誤：無法載入許可證資料集 — {e}", file=sys.stderr)
+        log.error("無法載入許可證資料集 — %s", e)
         sys.exit(1)
 
     results = None
 
     # === license 為 exclusive 查詢：找到後附仿單連結後直接結束路由 ===
     if args.license:
-        print(f"查詢許可證字號：{args.license}")
+        log.info("查詢許可證字號：%s", args.license)
         results = search_by_license_no(license_normalized, args.license)
 
         if results:
@@ -222,15 +260,15 @@ def main() -> None:
                         lr = leaflet_hits[0][0]
                         row["_leaflet_url"] = get_field(lr, "leaflet_url")
                         row["_package_url"] = get_field(lr, "package_url")
-            except Exception:
-                pass
+            except Exception as e:
+                log.debug("仿單連結查詢失敗（非致命）：%s", e)
 
     else:
         # === 組合查詢：用決策表決定 primary + cross filters ===
         primary, cross_filters = plan_query(args)
 
         if primary is None:
-            print("未指定有效的查詢條件。")
+            log.warning("未指定有效的查詢條件。")
             return
 
         primary_value = getattr(args, primary)
@@ -238,9 +276,9 @@ def main() -> None:
             parts = [f"{_field_label_zh(primary)}={primary_value}"] + [
                 f"{_field_label_zh(k)}={v}" for k, v in cross_filters.items()
             ]
-            print(f"組合查詢：{', '.join(parts)}")
+            log.info("組合查詢：%s", ", ".join(parts))
         else:
-            print(f"查詢{_field_label_zh(primary)}：{primary_value}")
+            log.info("查詢%s：%s", _field_label_zh(primary), primary_value)
 
         alias_used = None
         if primary in _ALIAS_AWARE_SEARCH:
@@ -251,7 +289,8 @@ def main() -> None:
             results = _PRIMARY_SEARCH[primary](license_normalized, primary_value)
 
         if alias_used:
-            print(f"提示：原查詢「{primary_value}」0 筆，透過 alias「{alias_used}」查到結果")
+            log.info("提示：原查詢「%s」0 筆，透過 alias「%s」查到結果",
+                     primary_value, alias_used)
 
         # 0 筆 + 有 distinct 欄位可查 → 提供「是不是要查 XXX」建議
         if not results and primary in _SUGGEST_FIELD_MAP:
@@ -260,9 +299,9 @@ def main() -> None:
             )
             suggestions = suggest_similar(primary_value, distinct, n=3, cutoff=0.6)
             if suggestions:
-                print(f"\n查無「{primary_value}」相關資料，是不是要查：")
+                log.warning("查無「%s」相關資料，是不是要查：", primary_value)
                 for s in suggestions:
-                    print(f"  - {s}")
+                    log.warning("  - %s", s)
 
         if cross_filters:
             results = apply_cross_filter(results, **cross_filters)

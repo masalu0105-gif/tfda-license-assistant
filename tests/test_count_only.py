@@ -37,6 +37,7 @@ def _seed_cache(home: Path):
 
 
 def _run(args, home):
+    """回傳 stdout + stderr 合併（使用者看到的完整畫面）。"""
     env = {
         "HOME": str(home),
         "PATH": os.environ.get("PATH", ""),
@@ -48,7 +49,7 @@ def _run(args, home):
         capture_output=True, text=True, env=env, timeout=30,
     )
     assert result.returncode == 0, f"rc={result.returncode} stderr={result.stderr}"
-    return result.stdout
+    return result.stdout + result.stderr
 
 
 # ───── --count-only 基本功能 ─────

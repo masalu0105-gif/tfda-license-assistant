@@ -127,6 +127,12 @@ python scripts/query_tfda.py --reagent "glucose" --group-by manufacturer
 
 # 更新快取
 python scripts/query_tfda.py --update-cache
+
+# 抑制進度訊息（只保留結果 stdout，給下游 pipe 用）
+python scripts/query_tfda.py --company "醫兆" --json --quiet | jq .
+
+# 顯示 DEBUG 級詳細 log（除錯用）
+python scripts/query_tfda.py --company "醫兆" --verbose
 ```
 
 ## 回答格式原則
