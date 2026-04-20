@@ -35,6 +35,7 @@ from tfda_normalize import get_field, normalize_dataset  # noqa: E402
 from tfda_schema_check import check_all_caches, report_and_log  # noqa: E402
 from tfda_search import (  # noqa: E402
     apply_cross_filter,
+    build_indexes,
     distinct_field_values,
     plan_query,
     search_by_company,
@@ -317,6 +318,7 @@ def _run_main(args, state: dict, parser: argparse.ArgumentParser) -> None:
     try:
         license_data = load_dataset("license")
         license_normalized = normalize_dataset(license_data, "license")
+        license_indexes = build_indexes(license_normalized)
     except Exception as e:
         log.error("無法載入許可證資料集 — %s", e)
         sys.exit(1)
@@ -327,7 +329,9 @@ def _run_main(args, state: dict, parser: argparse.ArgumentParser) -> None:
     if args.license:
         state["query_type"] = "license"
         log.info("查詢許可證字號：%s", args.license)
-        results = search_by_license_no(license_normalized, args.license)
+        results = search_by_license_no(
+            license_normalized, args.license, indexes=license_indexes,
+        )
 
         if results:
             try:
@@ -364,10 +368,16 @@ def _run_main(args, state: dict, parser: argparse.ArgumentParser) -> None:
         alias_used = None
         if primary in _ALIAS_AWARE_SEARCH:
             results, alias_used = _ALIAS_AWARE_SEARCH[primary](
-                license_normalized, primary_value
+                license_normalized, primary_value, indexes=license_indexes,
             )
         else:
-            results = _PRIMARY_SEARCH[primary](license_normalized, primary_value)
+            # keyword / reagent 走多欄位 / 全文，暫不套 index
+            if primary in ("product",):
+                results = _PRIMARY_SEARCH[primary](
+                    license_normalized, primary_value, indexes=license_indexes,
+                )
+            else:
+                results = _PRIMARY_SEARCH[primary](license_normalized, primary_value)
 
         if alias_used:
             state["fallback_used"].append("alias")

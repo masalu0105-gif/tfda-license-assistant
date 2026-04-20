@@ -43,7 +43,6 @@ from tfda_search import (  # noqa: E402
     search_by_reagent,
 )
 
-
 SCENARIOS: List[Tuple[str, Callable]] = [
     ("company__醫兆",          lambda rows: search_by_company(rows, "醫兆")),
     ("manufacturer__ARKRAY",   lambda rows: search_by_manufacturer(rows, "ARKRAY")),
@@ -155,6 +154,7 @@ def main():
 
     if args.synthetic > 0:
         import tempfile
+
         import tfda_datasets
         tmp = Path(tempfile.mkdtemp(prefix="tfda_bench_"))
         _build_synthetic_cache(tmp, args.synthetic)

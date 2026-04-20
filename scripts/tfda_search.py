@@ -10,6 +10,66 @@ from typing import Dict, List, Optional, Tuple
 from tfda_aliases import expand_company, expand_manufacturer
 from tfda_normalize import get_field, get_searchable_text, to_halfwidth
 
+# ─────────────────────── Pre-index (P5.2) ───────────────────────
+# 為加速 search_by_{company,manufacturer,license_no,product} 建反向索引：
+# 欄位正規化值（halfwidth+lower）→ row 索引 list。
+# 搜尋流程：先掃 distinct key（規模 ~K），命中者展開為 rows；
+# K << N（14.5 萬筆 license 約 5K companies / 2K manufacturers）。
+
+_INDEXABLE_FIELDS = ("company_name", "manufacturer", "product_name_zh",
+                     "product_name_en", "license_no")
+
+
+def build_indexes(rows: List[Dict]) -> Dict[str, Dict[str, List[int]]]:
+    """對可索引欄位建 inverted index。
+
+    key: 欄位名（unified），value: { normalized_value: [row_idx, ...] }。
+    normalized_value = to_halfwidth(val).lower().strip()
+    """
+    indexes: Dict[str, Dict[str, List[int]]] = {
+        field: {} for field in _INDEXABLE_FIELDS
+    }
+    for i, row in enumerate(rows):
+        for field in _INDEXABLE_FIELDS:
+            val = get_field(row, field, "")
+            if not val or val == "N/A":
+                continue
+            key = to_halfwidth(val).lower().strip()
+            if not key:
+                continue
+            indexes[field].setdefault(key, []).append(i)
+    return indexes
+
+
+def _indexed_match(
+    rows: List[Dict],
+    index: Dict[str, List[int]],
+    query: str,
+    fuzzy_cutoff: float = 0.5,
+) -> List[Tuple[Dict, str]]:
+    """掃 index 的 distinct keys，對每個 key 呼叫 _match_value。
+
+    快取 key 已為 normalized (halfwidth+lower)：
+    - Fast path：若 query normalized 直接是 index key → 回傳 EXACT（O(1)）
+    - Slow path：掃所有 distinct keys 找 contains / fuzzy
+    """
+    if not query or not index:
+        return []
+    q_norm = to_halfwidth(query).lower().strip()
+
+    # Fast path: 精確命中 index key → O(1)
+    if q_norm in index:
+        return [(rows[i], MATCH_EXACT) for i in index[q_norm]]
+
+    # Slow path: 掃 distinct keys（K << N）
+    results: List[Tuple[Dict, str]] = []
+    for key, row_indexes in index.items():
+        mt = _match_value(query, key, fuzzy_cutoff=fuzzy_cutoff)
+        if mt:
+            for idx in row_indexes:
+                results.append((rows[idx], mt))
+    return _sort_results(results)
+
 # 許可證字號偵測：用 pattern 組合提高精準度，避免單一字（輸/製/診）誤判
 # 涵蓋：衛[部署授]、醫器、輸字/製字/輸壹字/陸輸字/登字/診字、字第數字
 _LICENSE_NO_PATTERNS: Tuple[re.Pattern, ...] = (
@@ -85,46 +145,57 @@ def _match_value(query: str, value: str, fuzzy_cutoff: float = 0.5) -> Optional[
     return None
 
 
-def search_by_license_no(rows: List[Dict], license_no: str) -> List[Tuple[Dict, str]]:
-    """依許可證字號查詢。"""
-    results = []
-    # 清理輸入，支援各種格式
+def search_by_license_no(
+    rows: List[Dict],
+    license_no: str,
+    indexes: Optional[Dict[str, Dict[str, List[int]]]] = None,
+) -> List[Tuple[Dict, str]]:
+    """依許可證字號查詢。indexes 有提供時走 O(K) 而非 O(N)。"""
     q = license_no.strip()
-
+    if indexes and "license_no" in indexes:
+        return _indexed_match(rows, indexes["license_no"], q)
+    results = []
     for row in rows:
         val = get_field(row, "license_no", "")
         match_type = _match_value(q, val)
         if match_type:
             results.append((row, match_type))
-
     return _sort_results(results)
 
 
-def search_by_company(rows: List[Dict], company_name: str) -> List[Tuple[Dict, str]]:
+def search_by_company(
+    rows: List[Dict],
+    company_name: str,
+    indexes: Optional[Dict[str, Dict[str, List[int]]]] = None,
+) -> List[Tuple[Dict, str]]:
     """依申請商/藥商名稱查詢。"""
-    results = []
     q = company_name.strip()
-
+    if indexes and "company_name" in indexes:
+        return _indexed_match(rows, indexes["company_name"], q)
+    results = []
     for row in rows:
         val = get_field(row, "company_name", "")
         match_type = _match_value(q, val)
         if match_type:
             results.append((row, match_type))
-
     return _sort_results(results)
 
 
-def search_by_manufacturer(rows: List[Dict], manufacturer: str) -> List[Tuple[Dict, str]]:
+def search_by_manufacturer(
+    rows: List[Dict],
+    manufacturer: str,
+    indexes: Optional[Dict[str, Dict[str, List[int]]]] = None,
+) -> List[Tuple[Dict, str]]:
     """依製造廠/廠牌名稱查詢（放寬模糊比對 cutoff）。"""
-    results = []
     q = manufacturer.strip()
-
+    if indexes and "manufacturer" in indexes:
+        return _indexed_match(rows, indexes["manufacturer"], q, fuzzy_cutoff=0.4)
+    results = []
     for row in rows:
         val = get_field(row, "manufacturer", "")
         match_type = _match_value(q, val, fuzzy_cutoff=0.4)
         if match_type:
             results.append((row, match_type))
-
     return _sort_results(results)
 
 
@@ -133,38 +204,38 @@ def search_with_alias_fallback(
     query: str,
     primary_fn,
     alias_expand_fn,
+    indexes: Optional[Dict[str, Dict[str, List[int]]]] = None,
 ) -> Tuple[List[Tuple[Dict, str]], Optional[str]]:
     """先用 primary_fn 直接查；0 筆時依 alias_expand_fn 逐一重試。
 
     回傳 (results, alias_used)。alias_used = None 表示主查詢即命中，
     否則為實際觸發命中的 alias 字串（供 UI 標示「透過 alias 查到」）。
     """
-    primary = primary_fn(rows, query)
+    primary = primary_fn(rows, query, indexes) if indexes else primary_fn(rows, query)
     if primary:
         return primary, None
 
-    # Alias 重試
     alternatives = alias_expand_fn(query)
     for alt in alternatives:
         if alt.strip().lower() == query.strip().lower():
             continue
-        hits = primary_fn(rows, alt)
+        hits = primary_fn(rows, alt, indexes) if indexes else primary_fn(rows, alt)
         if hits:
             return hits, alt
     return [], None
 
 
-def search_manufacturer_with_alias(rows, query):
+def search_manufacturer_with_alias(rows, query, indexes=None):
     """製造廠查詢 + alias fallback wrapper。"""
     return search_with_alias_fallback(
-        rows, query, search_by_manufacturer, expand_manufacturer
+        rows, query, search_by_manufacturer, expand_manufacturer, indexes=indexes,
     )
 
 
-def search_company_with_alias(rows, query):
+def search_company_with_alias(rows, query, indexes=None):
     """公司查詢 + alias fallback wrapper。"""
     return search_with_alias_fallback(
-        rows, query, search_by_company, expand_company
+        rows, query, search_by_company, expand_company, indexes=indexes,
     )
 
 
@@ -221,23 +292,39 @@ def suggest_similar(query: str, candidates: List[str],
     return [orig for _, orig in scored[:n]]
 
 
-def search_by_product(rows: List[Dict], product_name: str) -> List[Tuple[Dict, str]]:
+def search_by_product(
+    rows: List[Dict],
+    product_name: str,
+    indexes: Optional[Dict[str, Dict[str, List[int]]]] = None,
+) -> List[Tuple[Dict, str]]:
     """依產品名稱（中英文）查詢。"""
-    results = []
     q = product_name.strip()
+    if indexes:
+        # 合併 zh/en 兩個索引，用 row id 去重並取較佳 match
+        combined: Dict[int, Tuple[Dict, str]] = {}
+        for field in ("product_name_zh", "product_name_en"):
+            idx = indexes.get(field)
+            if not idx:
+                continue
+            for row, mt in _indexed_match(rows, idx, q):
+                row_id = id(row)
+                if row_id in combined:
+                    prev_mt = combined[row_id][1]
+                    best = _best_match(prev_mt, mt)
+                    combined[row_id] = (row, best or mt)
+                else:
+                    combined[row_id] = (row, mt)
+        return _sort_results(list(combined.values()))
 
+    results = []
     for row in rows:
         zh = get_field(row, "product_name_zh", "")
         en = get_field(row, "product_name_en", "")
-
         match_zh = _match_value(q, zh)
         match_en = _match_value(q, en)
-
-        # 取最佳匹配
         best = _best_match(match_zh, match_en)
         if best:
             results.append((row, best))
-
     return _sort_results(results)
 
 
