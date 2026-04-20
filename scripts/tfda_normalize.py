@@ -4,8 +4,7 @@
 將原始欄位名對應到統一的內部欄位名。
 """
 
-from typing import Dict, List, Optional
-
+from typing import Dict, List
 
 # 統一欄位名 → 可能的原始欄位名（依實測結果建立）
 FIELD_ALIASES: Dict[str, List[str]] = {
