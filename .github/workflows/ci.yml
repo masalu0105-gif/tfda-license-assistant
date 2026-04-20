@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [master, main]
 
+permissions:
+  contents: read
+  pull-requests: write  # 讓失敗時可以貼 comment 到 PR
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -31,7 +35,33 @@ jobs:
         run: ruff check scripts/ tests/
 
       - name: Run tests
-        run: pytest tests/ --cov=scripts --cov-report=term-missing -v --tb=short
+        id: pytest
+        run: |
+          set -o pipefail
+          pytest tests/ --cov=scripts --cov-report=term-missing -v --tb=short 2>&1 | tee /tmp/pytest.log
+        continue-on-error: true
+
+      - name: Post pytest log as PR comment on failure
+        if: steps.pytest.outcome == 'failure' && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          {
+            echo "### CI failure — Python ${{ matrix.python-version }}"
+            echo ""
+            echo "<details><summary>pytest tail (last 200 lines)</summary>"
+            echo ""
+            echo '```'
+            tail -200 /tmp/pytest.log
+            echo '```'
+            echo ""
+            echo "</details>"
+          } > /tmp/comment.md
+          gh pr comment ${{ github.event.pull_request.number }} --body-file /tmp/comment.md || true
+
+      - name: Fail job if pytest failed
+        if: steps.pytest.outcome == 'failure'
+        run: exit 1
 
       - name: Enforce per-module coverage thresholds (core modules)
         run: |
@@ -41,5 +71,3 @@ jobs:
 
       - name: Verify SKILL.md ↔ CLI flags consistency
         run: pytest tests/test_skill_md_consistency.py -v
-        # 允許此 job 在 P2.4 測試檔尚未建立前暫時失敗（continue-on-error 後續移除）
-        continue-on-error: false
