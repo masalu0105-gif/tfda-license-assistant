@@ -52,7 +52,7 @@
 | **驗證指令** | `pytest tests/ --co -q`（collection 成功）+ 人工 review fixture 確認去敏 |
 | **不能破壞** | 真實快取 `~/.cache/tfda/` 不得被測試讀寫（用 `monkeypatch` 隔離）。 |
 
-### [ ] P1.2 單元測試：normalize / search / formatter
+### [x] P1.2 單元測試：normalize / search / formatter
 
 | 模組 | 覆蓋率門檻 | 重點 |
 |------|-----------|------|
@@ -62,7 +62,7 @@
 
 **驗證指令**：`pytest tests/ --cov=scripts --cov-report=term-missing --cov-fail-under=85`
 
-### [ ] P1.3 CLI end-to-end 測試（golden output）
+### [x] P1.3 CLI end-to-end 測試（golden output）
 
 | 項目 | 內容 |
 |------|------|
@@ -71,7 +71,7 @@
 | **驗證指令** | `pytest tests/test_cli_e2e.py -v` |
 | **接受的 diff** | 匹配類型（「完全匹配」「部分匹配」）欄位可忽略（用 normalizer 濾掉）。 |
 
-### [ ] P1.4 資料 schema snapshot 測試（偵測 TFDA 源端漂移）
+### [x] P1.4 資料 schema snapshot 測試（偵測 TFDA 源端漂移）
 
 | 項目 | 內容 |
 |------|------|
@@ -79,7 +79,7 @@
 | **完成定義** | (a) 記錄每個資料集的欄位清單 + 必要欄位（`許可證字號` 等）+ 最小筆數下限；(b) 測試會讀 `~/.cache/tfda/*.csv`（若存在）或 skip；(c) 偵測到新增/刪除欄位時 fail 並列出 diff。 |
 | **驗證指令** | `pytest tests/test_schema_drift.py -v`（本地有快取才跑，CI 用 fixture 版） |
 
-### [ ] P1.5 `test-prompts.json` 升格為 smoke test
+### [x] P1.5 `test-prompts.json` 升格為 smoke test
 
 | 項目 | 內容 |
 |------|------|
