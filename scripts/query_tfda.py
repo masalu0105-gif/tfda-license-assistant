@@ -113,6 +113,8 @@ def build_parser() -> argparse.ArgumentParser:
     output.add_argument("--limit", type=int, default=0, help="限制顯示筆數（0=不限制）")
     output.add_argument("--group-by", type=str, choices=["manufacturer", "company_name"],
                         help="依指定欄位分組顯示")
+    output.add_argument("--count-only", action="store_true",
+                        help="只輸出筆數，不列出內容（快速預估）")
 
     # 快取管理
     cache = parser.add_argument_group("快取管理")
@@ -161,6 +163,9 @@ def main() -> None:
             qsd_normalized = normalize_dataset(qsd_data, "qsd")
             results = search_qsd(qsd_normalized, args.qsd)
 
+            if args.count_only:
+                print(f"共找到 {len(results)} 筆")
+                return
             if args.json:
                 print(format_json(results))
             else:
@@ -178,6 +183,9 @@ def main() -> None:
             leaflet_normalized = normalize_dataset(leaflet_data, "leaflet")
             results = search_leaflet(leaflet_normalized, args.leaflet)
 
+            if args.count_only:
+                print(f"共找到 {len(results)} 筆")
+                return
             if args.json:
                 print(format_json(results))
             else:
@@ -260,12 +268,15 @@ def main() -> None:
             results = apply_cross_filter(results, **cross_filters)
 
     # === 輸出 ===
+    if args.count_only:
+        print(f"共找到 {len(results)} 筆")
+        return
     if args.json:
         print(format_json(results))
         return
 
-    # 超過 20 筆先顯示摘要
-    if len(results) > 20 and not args.limit:
+    # 超過 30 筆先顯示摘要（對齊 SKILL.md 檢查點）
+    if len(results) > 30 and not args.limit:
         group_field = args.group_by or "manufacturer"
         print(format_summary(results, group_field))
         print()
@@ -282,7 +293,7 @@ def main() -> None:
     if use_grouping:
         print(format_grouped_by_manufacturer(results, limit=limit))
     else:
-        display_limit = args.limit if args.limit > 0 else (10 if len(results) > 20 else len(results))
+        display_limit = args.limit if args.limit > 0 else (10 if len(results) > 30 else len(results))
         print(format_license_table(results, limit=display_limit))
 
     # 仿單連結（若有）

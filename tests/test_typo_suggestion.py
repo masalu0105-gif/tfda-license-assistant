@@ -13,7 +13,6 @@ from tfda_search import (
     suggest_similar,
 )
 
-
 # ───── distinct_field_values ─────
 
 def test_distinct_companies(normalized_license_rows):

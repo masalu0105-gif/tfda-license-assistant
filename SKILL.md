@@ -116,6 +116,9 @@ python scripts/query_tfda.py --company "醫兆" --reagent "HbA1c"
 # 輸出 JSON
 python scripts/query_tfda.py --company "醫兆" --json
 
+# 只取筆數（不列出內容，快速預估）
+python scripts/query_tfda.py --company "醫兆" --count-only
+
 # 限制筆數
 python scripts/query_tfda.py --company "醫兆" --limit 20
 
