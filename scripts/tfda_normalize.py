@@ -6,6 +6,28 @@
 
 from typing import Dict, List
 
+
+def to_halfwidth(text: str) -> str:
+    """將全形英數、標點、空白轉半形。中文字元不受影響。
+
+    用於搜尋比對前的正規化：「ＡＲＫＲＡＹ」→「ARKRAY」。
+    查詢字與資料欄位雙邊都套用，可一次解決全形半形差異，
+    不必再做「0 筆時重試」之類的額外邏輯。
+    """
+    if not text:
+        return text
+    out = []
+    for ch in text:
+        code = ord(ch)
+        if 0xFF01 <= code <= 0xFF5E:
+            out.append(chr(code - 0xFEE0))
+        elif code == 0x3000:
+            out.append(" ")
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
 # 統一欄位名 → 可能的原始欄位名（依實測結果建立）
 FIELD_ALIASES: Dict[str, List[str]] = {
     # === 許可證資料集 (InfoId=68) ===

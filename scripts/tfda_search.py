@@ -7,7 +7,7 @@ import difflib
 import re
 from typing import Dict, List, Optional, Tuple
 
-from tfda_normalize import get_field, get_searchable_text
+from tfda_normalize import get_field, get_searchable_text, to_halfwidth
 
 # 許可證字號偵測：用 pattern 組合提高精準度，避免單一字（輸/製/診）誤判
 # 涵蓋：衛[部署授]、醫器、輸字/製字/輸壹字/陸輸字/登字/診字、字第數字
@@ -57,12 +57,16 @@ MATCH_FUZZY = "模糊匹配"
 
 
 def _match_value(query: str, value: str, fuzzy_cutoff: float = 0.5) -> Optional[str]:
-    """比對單一值，回傳匹配類型或 None。"""
+    """比對單一值，回傳匹配類型或 None。
+
+    查詢字與欄位值雙邊都做全形→半形 + 大小寫正規化，
+    故「ＡＲＫＲＡＹ」vs「ARKRAY」可直接命中 exact。
+    """
     if not value or not query:
         return None
 
-    q = query.lower().strip()
-    v = value.lower().strip()
+    q = to_halfwidth(query).lower().strip()
+    v = to_halfwidth(value).lower().strip()
 
     # 完全匹配
     if q == v:
