@@ -13,7 +13,7 @@
 
 ## Phase 0 — Bug 修正（最高優先，無依賴）
 
-### [ ] P0.1 修 `query_tfda.py` 組合查詢邏輯
+### [x] P0.1 修 `query_tfda.py` 組合查詢邏輯
 
 | 項目 | 內容 |
 |------|------|
@@ -22,7 +22,7 @@
 | **驗證指令** | `pytest tests/test_cli_dispatch.py -v`（新增檔案，測 32 種 flag 組合的 primary field 與 filters 是否正確）+ `python scripts/query_tfda.py --company 醫兆 --manufacturer ARKRAY --reagent HbA1c`（三重組合不 crash）。 |
 | **不能破壞** | `--company 醫兆` 單條件查詢結果筆數與修改前一致（±0 筆）。 |
 
-### [ ] P0.2 修 QSD 到期警示（文件 vs 程式碼矛盾）
+### [x] P0.2 修 QSD 到期警示（文件 vs 程式碼矛盾）
 
 | 項目 | 內容 |
 |------|------|
@@ -31,7 +31,7 @@
 | **驗證指令** | `pytest tests/test_validity_status.py -v`，覆蓋 8 個 case：`(過期/即將到期/有效) × (is_valid="是"/"否"/空)` + 日期格式異常。 |
 | **不能破壞** | 既有「❌ 已過期」標示行為不變。 |
 
-### [ ] P0.3 補 `_looks_like_license_no` 變體
+### [x] P0.3 補 `_looks_like_license_no` 變體
 
 | 項目 | 內容 |
 |------|------|
@@ -43,7 +43,7 @@
 
 ## Phase 1 — 測試基礎建設（護航後續所有改動）
 
-### [ ] P1.1 建立 pytest + fixture 骨架
+### [x] P1.1 建立 pytest + fixture 骨架
 
 | 項目 | 內容 |
 |------|------|
