@@ -1,0 +1,18 @@
+{
+  "dataset": "leaflet",
+  "info_id": 70,
+  "description": "仿單/外盒圖檔",
+  "required_fields": [
+    "許可證字號",
+    "說明書圖檔連結"
+  ],
+  "known_fields": [
+    "許可證字號",
+    "中文品名",
+    "英文品名",
+    "說明書圖檔連結",
+    "包裝圖檔連結"
+  ],
+  "min_rows_fixture": 3,
+  "min_rows_real": 30000
+}

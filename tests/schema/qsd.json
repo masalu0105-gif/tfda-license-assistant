@@ -1,0 +1,21 @@
+{
+  "dataset": "qsd",
+  "info_id": 112,
+  "description": "QSD 認可登錄",
+  "required_fields": [
+    "許可編號",
+    "製造廠名稱",
+    "申請商名稱",
+    "有效日期"
+  ],
+  "known_fields": [
+    "許可編號",
+    "製造廠名稱",
+    "申請商名稱",
+    "有效日期",
+    "是否在3年有效期間內",
+    "許可項目及作業內容"
+  ],
+  "min_rows_fixture": 3,
+  "min_rows_real": 10000
+}
