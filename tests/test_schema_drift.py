@@ -20,6 +20,7 @@ import csv
 import json
 import os
 from pathlib import Path
+from typing import Optional
 
 import pytest
 
@@ -45,7 +46,7 @@ def _read_csv_headers_and_count(csv_path: Path) -> tuple:
     return [h.strip() for h in headers], rows
 
 
-def _resolve_target_csv(dataset: str) -> Path | None:
+def _resolve_target_csv(dataset: str) -> Optional[Path]:
     if _TARGET == "cache":
         path = Path.home() / ".cache" / "tfda" / f"{dataset}.csv"
         return path if path.exists() else None
