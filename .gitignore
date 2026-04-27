@@ -4,3 +4,6 @@ __pycache__/
 output/
 *.xlsx
 *.xls
+.coverage
+.pytest_cache/
+htmlcov/

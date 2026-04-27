@@ -1,0 +1,5 @@
+# TFDA License Assistant — 公司內部版 (company/build_license_db.py)
+#
+# 需讀取 Excel、輸出多 sheet 格式化追蹤表
+pandas>=2.0
+openpyxl>=3.1

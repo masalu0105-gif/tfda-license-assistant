@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "updated_at": "2026-04-20",
+  "description": "中英文廠牌 / 公司名對照。0 筆查詢時自動以 alias 重試。",
+  "maintenance": "新增 alias 請附來源（官網 / TFDA 登錄紀錄）。alias 為雙向對應：查任一個可展開為整組。",
+  "manufacturers": {
+    "ARKRAY": ["愛科萊", "ARKRAY Inc.", "ARKRAY Factory Inc.", "愛科萊股份有限公司"],
+    "Sysmex": ["希森美康", "Sysmex Corporation", "希森美康株式會社"],
+    "Roche": ["羅氏", "Roche Diagnostics", "Roche Diagnostics GmbH", "羅氏診斷"],
+    "Abbott": ["亞培", "Abbott Laboratories", "Abbott Diabetes Care", "Abbott Rapid Diagnostics"],
+    "Beckman Coulter": ["貝克曼庫爾特", "Beckman"],
+    "Bio-Rad": ["伯樂", "Bio-Rad Laboratories", "柏勒"],
+    "Medtronic": ["美敦力", "Medtronic Inc."],
+    "Siemens Healthineers": ["西門子醫療", "Siemens Healthcare"],
+    "Thermo Fisher": ["賽默飛", "Thermo Fisher Scientific", "賽默飛世爾"]
+  },
+  "companies": {
+    "醫兆科技股份有限公司": ["醫兆", "醫兆科技"],
+    "亞培股份有限公司": ["亞培台灣", "Abbott Taiwan"]
+  }
+}

@@ -1,0 +1,8 @@
+# TFDA License Assistant — 開發依賴（測試 + lint）
+#
+# 安裝：pip install -r requirements-dev.txt
+pytest>=7.0
+pytest-cov>=4.0
+ruff>=0.1.0
+# 讓 pytest 失敗自動在 GitHub Actions check run annotations 顯示（debug CI 專用）
+pytest-github-actions-annotate-failures>=0.2

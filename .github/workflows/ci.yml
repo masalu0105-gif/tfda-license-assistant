@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+permissions:
+  contents: read
+  pull-requests: write  # 讓失敗時可以貼 comment 到 PR
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.8", "3.10", "3.12"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dev dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Lint with ruff
+        run: ruff check scripts/ tests/
+
+      - name: Run tests
+        id: pytest
+        run: |
+          set -o pipefail
+          pytest tests/ --cov=scripts --cov-report=term-missing -v --tb=short 2>&1 | tee /tmp/pytest.log
+        continue-on-error: true
+
+      - name: Post pytest log as PR comment on failure
+        if: steps.pytest.outcome == 'failure' && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          {
+            echo "### CI failure — Python ${{ matrix.python-version }}"
+            echo ""
+            echo "<details><summary>pytest tail (last 200 lines)</summary>"
+            echo ""
+            echo '```'
+            tail -200 /tmp/pytest.log
+            echo '```'
+            echo ""
+            echo "</details>"
+          } > /tmp/comment.md
+          gh pr comment ${{ github.event.pull_request.number }} --body-file /tmp/comment.md || true
+
+      - name: Fail job if pytest failed
+        if: steps.pytest.outcome == 'failure'
+        run: exit 1
+
+      - name: Enforce per-module coverage thresholds (core modules)
+        run: |
+          coverage report --include='scripts/tfda_normalize.py' --fail-under=90
+          coverage report --include='scripts/tfda_search.py' --fail-under=85
+          coverage report --include='scripts/tfda_formatter.py' --fail-under=80
+
+      - name: Verify SKILL.md ↔ CLI flags consistency
+        run: pytest tests/test_skill_md_consistency.py -v

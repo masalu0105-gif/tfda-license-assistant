@@ -10,6 +10,9 @@ from typing import Dict, List, Optional, Tuple
 
 from tfda_normalize import get_field
 
+# 到期警示閾值：對齊 SKILL.md「6 個月內到期」檢查點
+WARNING_THRESHOLD_DAYS = 180
+
 
 def format_license_table(results: List[Tuple[Dict, str]], limit: int = 10) -> str:
     """格式化許可證查詢結果為 markdown 表格。"""
@@ -180,39 +183,47 @@ def format_cache_footer(cache_info: Dict[str, dict]) -> str:
     return "\n---\n資料來源：TFDA 開放資料"
 
 
-def _get_validity_status(date_str: str, is_valid_field: str = "") -> str:
-    """判斷有效期限狀態。"""
-    if is_valid_field:
-        if "否" in is_valid_field:
-            return "❌ 已過期"
-        if "是" in is_valid_field:
-            # 進一步檢查是否即將到期
-            pass
-
+def _parse_valid_date(date_str: str) -> Optional[datetime]:
+    """嘗試多種常見格式解析日期，解析失敗回傳 None。"""
     if not date_str or date_str == "N/A":
-        return "N/A"
+        return None
+    for fmt in ("%Y/%m/%d", "%Y-%m-%d", "%Y%m%d"):
+        try:
+            return datetime.strptime(date_str.strip(), fmt)
+        except ValueError:
+            continue
+    return None
 
-    try:
-        # 嘗試解析日期（常見格式）
-        for fmt in ["%Y/%m/%d", "%Y-%m-%d", "%Y%m%d"]:
-            try:
-                valid_date = datetime.strptime(date_str.strip(), fmt)
-                now = datetime.now()
-                if valid_date < now:
-                    return "❌ 已過期"
-                elif valid_date - now < timedelta(days=90):
-                    return "⚠️ 即將到期"
-                else:
-                    return "✅ 有效"
-            except ValueError:
-                continue
-    except Exception:
-        pass
 
-    # 用原始欄位判斷
-    if is_valid_field and "是" in is_valid_field:
+def _get_validity_status(date_str: str, is_valid_field: str = "") -> str:
+    """判斷有效期限狀態。
+
+    判定順序：
+    1. 若可解析日期：以日期為主（過期 / 即將到期 / 有效），
+       並用 `is_valid_field="否"` 作為 override —— 任一訊號為否即標過期。
+    2. 日期無法解析時：fallback 到 `is_valid_field` 的是/否。
+    3. 都無法判定 → "N/A"。
+
+    警示閾值採 `WARNING_THRESHOLD_DAYS`（模組常數，預設 180 天），
+    對齊 SKILL.md「6 個月內到期警示」檢查點。
+    """
+    is_valid_false = bool(is_valid_field) and "否" in is_valid_field
+    is_valid_true = bool(is_valid_field) and "是" in is_valid_field
+
+    parsed = _parse_valid_date(date_str)
+    if parsed is not None:
+        now = datetime.now()
+        if parsed < now or is_valid_false:
+            return "❌ 已過期"
+        if parsed - now < timedelta(days=WARNING_THRESHOLD_DAYS):
+            return "⚠️ 即將到期"
         return "✅ 有效"
 
+    # 日期無法解析：以 is_valid 欄位 fallback
+    if is_valid_false:
+        return "❌ 已過期"
+    if is_valid_true:
+        return "✅ 有效"
     return "N/A"
 
 

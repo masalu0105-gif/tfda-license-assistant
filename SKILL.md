@@ -81,43 +81,64 @@ description: |
 
 ## 如何執行
 
+以下範例假設 skill 安裝於 `$SKILL_DIR`（預設 `~/.claude/skills/tfda-license-assistant`）。
+可用相對路徑（從 repo 根目錄）：
+
 ```bash
 # 查許可證字號
-python ~/.claude/skills/tfda-license-assistant/scripts/query_tfda.py --license "衛部醫器輸字第XXXXXX號"
+python scripts/query_tfda.py --license "衛部醫器輸字第XXXXXX號"
 
 # 查公司所有產品
-python ~/.claude/skills/tfda-license-assistant/scripts/query_tfda.py --company "醫兆"
+python scripts/query_tfda.py --company "醫兆"
 
 # 查製造廠/廠牌
-python ~/.claude/skills/tfda-license-assistant/scripts/query_tfda.py --manufacturer "ARKRAY"
+python scripts/query_tfda.py --manufacturer "ARKRAY"
 
 # 查試劑/檢測項目
-python ~/.claude/skills/tfda-license-assistant/scripts/query_tfda.py --reagent "HbA1c"
+python scripts/query_tfda.py --reagent "HbA1c"
+
+# 查產品名稱（中英文）
+python scripts/query_tfda.py --product "Glucose Meter"
 
 # 全文關鍵字搜尋
-python ~/.claude/skills/tfda-license-assistant/scripts/query_tfda.py --keyword "尿液分析"
+python scripts/query_tfda.py --keyword "尿液分析"
 
 # 查 QSD
-python ~/.claude/skills/tfda-license-assistant/scripts/query_tfda.py --qsd "醫兆"
+python scripts/query_tfda.py --qsd "醫兆"
 
 # 查仿單/外盒
-python ~/.claude/skills/tfda-license-assistant/scripts/query_tfda.py --leaflet "衛部醫器輸字第XXXXXX號"
+python scripts/query_tfda.py --leaflet "衛部醫器輸字第XXXXXX號"
 
 # 組合查詢
-python ~/.claude/skills/tfda-license-assistant/scripts/query_tfda.py --company "醫兆" --manufacturer "ARKRAY"
-python ~/.claude/skills/tfda-license-assistant/scripts/query_tfda.py --company "醫兆" --reagent "HbA1c"
+python scripts/query_tfda.py --company "醫兆" --manufacturer "ARKRAY"
+python scripts/query_tfda.py --company "醫兆" --reagent "HbA1c"
 
 # 輸出 JSON
-python ~/.claude/skills/tfda-license-assistant/scripts/query_tfda.py --company "醫兆" --json
+python scripts/query_tfda.py --company "醫兆" --json
+
+# 只取筆數（不列出內容，快速預估）
+python scripts/query_tfda.py --company "醫兆" --count-only
 
 # 限制筆數
-python ~/.claude/skills/tfda-license-assistant/scripts/query_tfda.py --company "醫兆" --limit 20
+python scripts/query_tfda.py --company "醫兆" --limit 20
 
 # 依製造廠分組
-python ~/.claude/skills/tfda-license-assistant/scripts/query_tfda.py --reagent "glucose" --group-by manufacturer
+python scripts/query_tfda.py --reagent "glucose" --group-by manufacturer
 
 # 更新快取
-python ~/.claude/skills/tfda-license-assistant/scripts/query_tfda.py --update-cache
+python scripts/query_tfda.py --update-cache
+
+# 抑制進度訊息（只保留結果 stdout，給下游 pipe 用）
+python scripts/query_tfda.py --company "醫兆" --json --quiet | jq .
+
+# 顯示 DEBUG 級詳細 log（除錯用）
+python scripts/query_tfda.py --company "醫兆" --verbose
+
+# 將查詢字串記入 metrics.jsonl（預設不記，PII 考量）
+python scripts/query_tfda.py --company "醫兆" --log-query
+
+# 此次執行不寫 metrics
+python scripts/query_tfda.py --company "醫兆" --no-metrics
 ```
 
 ## 回答格式原則
